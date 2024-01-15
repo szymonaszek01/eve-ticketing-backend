@@ -8,6 +8,10 @@
 	<packaging>pom</packaging>
 	<version>0.0.1-SNAPSHOT</version>
 
+	<modules>
+		<module>event</module>
+	</modules>
+
 	<name>microservices</name>
 	<description>Eve Ticketing - Spring Boot App</description>
 
@@ -40,6 +44,16 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>2.1.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-ui</artifactId>
+			<version>1.7.0</version>
 		</dependency>
 	</dependencies>
 
