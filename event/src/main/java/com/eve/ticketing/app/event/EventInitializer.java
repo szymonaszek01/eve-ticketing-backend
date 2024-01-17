@@ -41,14 +41,15 @@ public class EventInitializer implements CommandLineRunner {
         return Event.builder()
                 .name(capitalize(String.join(" ", faker.lorem().words(3))))
                 .description(String.join(" ", faker.lorem().sentences(5)))
+                .maxTicketAmount(faker.number().numberBetween(1000, 100000))
                 .unitPrice(BigDecimal.valueOf(faker.number().numberBetween(100, 1000)))
                 .currency("$")
+                .childrenDiscount(BigDecimal.valueOf(0.2))
+                .studentsDiscount(BigDecimal.valueOf(0.5))
                 .startAt(date)
                 .endAt(new Date(date.getTime() + 2 * HOUR))
                 .country(faker.address().country())
-                .city(faker.address().city())
-                .street(faker.address().streetAddress())
-                .postalCode(faker.address().zipCode())
+                .address(faker.address().streetAddress() + ", " + faker.address().zipCode() + " " + faker.address().city())
                 .build();
     }
 

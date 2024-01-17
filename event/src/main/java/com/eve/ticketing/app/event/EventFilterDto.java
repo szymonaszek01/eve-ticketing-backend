@@ -21,5 +21,5 @@ public class EventFilterDto {
 
     private String country;
 
-    private String city;
+    private String address;
 }

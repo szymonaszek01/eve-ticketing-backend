@@ -42,10 +42,10 @@ public class EventSpecification {
         return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("country"), country);
     }
 
-    public static Specification<Event> eventCityEqual(String city) {
-        if (city == null || city.isBlank()) {
+    public static Specification<Event> eventAddressEqual(String address) {
+        if (address == null || address.isBlank()) {
             return null;
         }
-        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("city"), city);
+        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("address"), address);
     }
 }

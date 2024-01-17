@@ -21,9 +21,9 @@ public class EventServiceImpl implements EventService {
     public void createEvent(Event event) throws EventProcessingException {
         try {
             eventRepository.save(event);
-            log.info("Event (title=\"{}\") was created", event.getName());
+            log.info("Event (name=\"{}\") was created", event.getName());
         } catch (RuntimeException e) {
-            log.error("Event (title=\"{}\") was not created", event.getName());
+            log.error("Event (name=\"{}\") was not created", event.getName());
             throw new EventProcessingException("Event was not created. Invalid parameters.");
         }
     }
@@ -40,7 +40,7 @@ public class EventServiceImpl implements EventService {
                 .and(eventStartAtBetween(eventFilterDto.getMinDate(), eventFilterDto.getMaxDate()))
                 .and(eventEndAtBetween(eventFilterDto.getMinDate(), eventFilterDto.getMaxDate()))
                 .and(eventCountryEqual(eventFilterDto.getCountry()))
-                .and(eventCityEqual(eventFilterDto.getCity()));
+                .and(eventAddressEqual(eventFilterDto.getAddress()));
         Pageable pageable = PageRequest.of(page, size);
 
         return eventRepository.findAll(eventSpecification, pageable);

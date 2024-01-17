@@ -25,10 +25,19 @@ public class Event {
     @Column(nullable = false, length = 500)
     private String description;
 
+    @JsonProperty("max_ticket_amount")
+    private long maxTicketAmount;
+
     @JsonProperty("unit_price")
     private BigDecimal unitPrice;
 
     private String currency;
+
+    @JsonProperty("children_discount")
+    private BigDecimal childrenDiscount;
+
+    @JsonProperty("students_discount")
+    private BigDecimal studentsDiscount;
 
     @JsonProperty("start_at")
     @Column(nullable = false)
@@ -40,10 +49,5 @@ public class Event {
 
     private String country;
 
-    private String city;
-
-    private String street;
-
-    @JsonProperty("postal_code")
-    private String postalCode;
+    private String address;
 }
