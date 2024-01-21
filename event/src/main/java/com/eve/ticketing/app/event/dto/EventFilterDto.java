@@ -1,12 +1,14 @@
-package com.eve.ticketing.app.event;
+package com.eve.ticketing.app.event.dto;
 
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import java.util.Date;
 
-@Data
 @Builder
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class EventFilterDto {
 
     private String name;

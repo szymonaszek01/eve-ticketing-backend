@@ -38,10 +38,12 @@ public class EventInitializer implements CommandLineRunner {
     private Event createEvent() {
         Faker faker = new Faker();
         Date date = faker.date().between(new Date((System.currentTimeMillis() - 2 * YEAR)), new Date((System.currentTimeMillis() + 2 * YEAR)));
+        long maxTicketAmount = faker.number().numberBetween(1000, 100000);
         return Event.builder()
                 .name(capitalize(String.join(" ", faker.lorem().words(3))))
                 .description(String.join(" ", faker.lorem().sentences(5)))
-                .maxTicketAmount(faker.number().numberBetween(1000, 100000))
+                .maxTicketAmount(maxTicketAmount)
+                .currentTicketAmount(maxTicketAmount - 500)
                 .unitPrice(BigDecimal.valueOf(faker.number().numberBetween(100, 1000)))
                 .currency("$")
                 .childrenDiscount(BigDecimal.valueOf(0.2))

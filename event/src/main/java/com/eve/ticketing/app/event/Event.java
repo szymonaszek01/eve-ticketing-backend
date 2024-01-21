@@ -28,6 +28,9 @@ public class Event {
     @JsonProperty("max_ticket_amount")
     private long maxTicketAmount;
 
+    @JsonProperty("current_ticket_amount")
+    private long currentTicketAmount;
+
     @JsonProperty("unit_price")
     private BigDecimal unitPrice;
 
