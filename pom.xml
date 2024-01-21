@@ -10,6 +10,7 @@
 
 	<modules>
 		<module>event</module>
+		<module>ticket</module>
 	</modules>
 
 	<name>microservices</name>
