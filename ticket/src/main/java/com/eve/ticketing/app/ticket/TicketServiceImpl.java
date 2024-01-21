@@ -30,7 +30,7 @@ public class TicketServiceImpl implements TicketService {
     public void createTicket(Ticket ticket) throws TicketProcessingException {
         try {
             BigDecimal cost = restTemplate.getForObject(
-                    "http://localhost:8080/api/v1/event/id/{eventId}/cost?isAdult={isAdult}&isStudent={isStudent}",
+                    "http://EVENT/api/v1/event/id/{eventId}/cost?isAdult={isAdult}&isStudent={isStudent}",
                     BigDecimal.class,
                     ticket.getEventId(),
                     ticket.isAdult(),
@@ -42,7 +42,7 @@ public class TicketServiceImpl implements TicketService {
             ticket.setCost(cost);
 
             restTemplate.put(
-                    "http://localhost:8080/api/v1/event/update/current-ticket-amount",
+                    "http://EVENT/api/v1/event/update/current-ticket-amount",
                     CurrentTicketAmountDto.builder().eventId(ticket.getEventId()).createdTickets(1).build()
             );
 
