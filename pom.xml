@@ -12,7 +12,8 @@
 		<module>event</module>
 		<module>ticket</module>
 		<module>eureka-server</module>
-	</modules>
+        <module>seat</module>
+    </modules>
 
 	<name>microservices</name>
 	<description>Eve Ticketing - Spring Boot App</description>
