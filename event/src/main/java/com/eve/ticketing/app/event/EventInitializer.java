@@ -28,22 +28,22 @@ public class EventInitializer implements CommandLineRunner {
     public void run(String... args) {
         log.info("Application has started generating \"Event\" data");
         List<Event> eventList = new ArrayList<>();
-        for (int i = 0; i < 100; i++) {
-            eventList.add(createEvent());
+        eventList.add(createEvent(new Date(System.currentTimeMillis() + DAY * 50), 1L, false));
+        for (int i = 0; i < 99; i++) {
+            eventList.add(createEvent(null, null, true));
         }
         eventRepository.saveAll(eventList);
         log.info("Application has generated 100 records of \"Event\" data");
     }
 
-    private Event createEvent() {
+    private Event createEvent(Date date, Long maxTicketAmount, boolean isWithoutSeats) {
         Faker faker = new Faker();
-        Date date = faker.date().between(new Date((System.currentTimeMillis() - 2 * YEAR)), new Date((System.currentTimeMillis() + 2 * YEAR)));
-        long maxTicketAmount = faker.number().numberBetween(1000, 100000);
+        date = date == null ? faker.date().between(new Date((System.currentTimeMillis() - 2 * YEAR)), new Date((System.currentTimeMillis() + 2 * YEAR))) : date;
         return Event.builder()
                 .name(capitalize(String.join(" ", faker.lorem().words(3))))
                 .description(String.join(" ", faker.lorem().sentences(5)))
-                .maxTicketAmount(maxTicketAmount)
-                .currentTicketAmount(maxTicketAmount - 500)
+                .maxTicketAmount(maxTicketAmount == null ? faker.number().numberBetween(1000, 100000) : maxTicketAmount)
+                .isSoldOut(false)
                 .unitPrice(BigDecimal.valueOf(faker.number().numberBetween(100, 1000)))
                 .currency("$")
                 .childrenDiscount(BigDecimal.valueOf(0.2))
@@ -52,6 +52,8 @@ public class EventInitializer implements CommandLineRunner {
                 .endAt(new Date(date.getTime() + 2 * HOUR))
                 .country(faker.address().country())
                 .address(faker.address().streetAddress() + ", " + faker.address().zipCode() + " " + faker.address().city())
+                .localizationName(String.join(" ", faker.lorem().words(2)))
+                .isWithoutSeats(isWithoutSeats)
                 .build();
     }
 

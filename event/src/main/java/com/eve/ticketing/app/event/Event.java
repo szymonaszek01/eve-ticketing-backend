@@ -17,7 +17,7 @@ public class Event {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+    private Long id;
 
     @Column(unique = true)
     private String name;
@@ -28,8 +28,8 @@ public class Event {
     @JsonProperty("max_ticket_amount")
     private long maxTicketAmount;
 
-    @JsonProperty("current_ticket_amount")
-    private long currentTicketAmount;
+    @JsonProperty("is_sold_out")
+    private boolean isSoldOut;
 
     @JsonProperty("unit_price")
     private BigDecimal unitPrice;
@@ -53,4 +53,10 @@ public class Event {
     private String country;
 
     private String address;
+
+    @JsonProperty("localization_name")
+    private String localizationName;
+
+    @JsonProperty("is_without_seats")
+    private boolean isWithoutSeats;
 }

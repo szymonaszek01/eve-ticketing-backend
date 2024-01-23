@@ -7,9 +7,9 @@ import lombok.*;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class CurrentTicketAmountDto {
+public class EventSoldOutDto {
 
     private long eventId;
 
-    private long createdTickets;
+    private boolean isSoldOut;
 }

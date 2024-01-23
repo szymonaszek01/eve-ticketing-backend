@@ -1,4 +1,4 @@
-package com.eve.ticketing.app.ticket.dto;
+package com.eve.ticketing.app.seat.dto;
 
 import lombok.*;
 
@@ -7,9 +7,9 @@ import lombok.*;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class CurrentTicketAmountDto {
+public class EventSoldOutDto {
 
     private long eventId;
 
-    private long createdTickets;
+    private boolean isSoldOut;
 }
