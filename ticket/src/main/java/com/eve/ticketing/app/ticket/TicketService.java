@@ -5,7 +5,9 @@ import org.springframework.data.domain.Page;
 
 public interface TicketService {
 
-    void createTicket(Ticket ticket) throws TicketProcessingException;
+    // TODO: Create method to remove all tickets
+
+    void createOrUpdateTicket(Ticket ticket) throws TicketProcessingException;
 
     Ticket getTicketById(long id) throws TicketProcessingException;
 

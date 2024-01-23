@@ -20,7 +20,7 @@ public class TicketController {
     @PostMapping("/create")
     public ResponseEntity<?> createTicket(@RequestBody Ticket ticket) {
         try {
-            ticketService.createTicket(ticket);
+            ticketService.createOrUpdateTicket(ticket);
             return new ResponseEntity<>(HttpStatus.CREATED);
         } catch (TicketProcessingException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
@@ -48,7 +48,6 @@ public class TicketController {
     @DeleteMapping("/id/{id}")
     public ResponseEntity<?> deleteTicketById(@PathVariable long id) {
         try {
-            // TODO: Decrease value in "currentTicketAmount" field in Event
             ticketService.deleteTicketById(id);
             return new ResponseEntity<>(HttpStatus.OK);
         } catch (TicketProcessingException e) {

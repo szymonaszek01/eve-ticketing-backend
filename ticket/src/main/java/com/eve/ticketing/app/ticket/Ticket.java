@@ -17,7 +17,7 @@ public class Ticket {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+    private Long id;
 
     @Column(unique = true)
     private String code;
@@ -46,4 +46,7 @@ public class Ticket {
 
     @JsonProperty("event_id")
     private long eventId;
+
+    @JsonProperty("seat_id")
+    private long seatId;
 }
