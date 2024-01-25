@@ -1,5 +1,6 @@
 package com.eve.ticketing.app.event.dto;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 @Builder
@@ -9,7 +10,9 @@ import lombok.*;
 @NoArgsConstructor
 public class EventSoldOutDto {
 
-    private long eventId;
+    @NotNull
+    private Long eventId;
 
-    private boolean isSoldOut;
+    @NonNull
+    private Boolean isSoldOut;
 }

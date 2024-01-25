@@ -4,6 +4,7 @@ import com.eve.ticketing.app.event.dto.EventFilterDto;
 import com.eve.ticketing.app.event.dto.EventShortDescriptionDto;
 import com.eve.ticketing.app.event.dto.EventSoldOutDto;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -30,7 +31,7 @@ public class EventController {
     }
 
     @PutMapping("/update/sold-out")
-    public ResponseEntity<?> updateEventSoldOut(@RequestBody EventSoldOutDto eventSoldOutDto) {
+    public ResponseEntity<?> updateEventSoldOut(@Valid @RequestBody EventSoldOutDto eventSoldOutDto) {
         try {
             eventService.updateEventSoldOut(eventSoldOutDto);
             return new ResponseEntity<>(HttpStatus.OK);

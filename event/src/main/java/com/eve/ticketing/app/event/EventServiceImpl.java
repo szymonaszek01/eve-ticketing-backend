@@ -34,7 +34,7 @@ public class EventServiceImpl implements EventService {
     @Override
     public void updateEventSoldOut(EventSoldOutDto eventSoldOutDto) throws EventProcessingException {
         Event event = getEventById(eventSoldOutDto.getEventId());
-        event.setSoldOut(eventSoldOutDto.isSoldOut());
+        event.setSoldOut(eventSoldOutDto.getIsSoldOut());
         createOrUpdateEvent(event);
     }
 
@@ -78,7 +78,6 @@ public class EventServiceImpl implements EventService {
     @Override
     public void deleteEventById(long id) throws EventProcessingException {
         try {
-            // TODO: Remove all tickets with provided id
             eventRepository.deleteById(id);
             log.info("Event (id=\"{}\") was deleted", id);
         } catch (RuntimeException e) {
