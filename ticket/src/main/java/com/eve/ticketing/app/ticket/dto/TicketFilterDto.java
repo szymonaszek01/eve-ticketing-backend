@@ -15,7 +15,7 @@ public class TicketFilterDto {
 
     private String lastname;
 
-    private String identityCardNumber;
+    private String phoneNumber;
 
     private Double minCost;
 

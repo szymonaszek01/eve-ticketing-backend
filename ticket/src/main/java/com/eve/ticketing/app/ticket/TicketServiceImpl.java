@@ -68,7 +68,7 @@ public class TicketServiceImpl implements TicketService {
         Specification<Ticket> ticketSpecification = Specification.where(ticketCodeEqual(ticketFilterDto.getCode()))
                 .and(ticketFirstnameEqual(ticketFilterDto.getFirstname()))
                 .and(ticketLastnameEqual(ticketFilterDto.getLastname()))
-                .and(ticketIdentityCardNumberEqual(ticketFilterDto.getIdentityCardNumber()))
+                .and(ticketPhoneNumberEqual(ticketFilterDto.getPhoneNumber()))
                 .and(ticketCostBetween(ticketFilterDto.getMinCost(), ticketFilterDto.getMaxCost()));
         Pageable pageable = PageRequest.of(page, size);
 

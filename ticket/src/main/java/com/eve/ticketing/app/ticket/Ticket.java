@@ -32,9 +32,9 @@ public class Ticket {
     @Column(nullable = false)
     private String lastname;
 
-    @JsonProperty("identity_card_number")
+    @JsonProperty("phone_number")
     @Column(nullable = false)
-    private String identityCardNumber;
+    private String phoneNumber;
 
     private BigDecimal cost;
 

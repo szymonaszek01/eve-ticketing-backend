@@ -27,11 +27,11 @@ public class TicketSpecification {
         return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("lastname"), lastname);
     }
 
-    public static Specification<Ticket> ticketIdentityCardNumberEqual(String identityCardNumber) {
-        if (identityCardNumber == null || identityCardNumber.isBlank()) {
+    public static Specification<Ticket> ticketPhoneNumberEqual(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.isBlank()) {
             return null;
         }
-        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("identityCardNumber"), identityCardNumber);
+        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("phoneNumber"), phoneNumber);
     }
 
     public static Specification<Ticket> ticketCostBetween(Double minCost, Double maxCost) {
