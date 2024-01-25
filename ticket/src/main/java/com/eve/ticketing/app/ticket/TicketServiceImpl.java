@@ -1,6 +1,7 @@
 package com.eve.ticketing.app.ticket;
 
 import com.eve.ticketing.app.ticket.dto.EventShortDescriptionDto;
+import com.eve.ticketing.app.ticket.dto.SeatCancelDto;
 import com.eve.ticketing.app.ticket.dto.SeatReserveDto;
 import com.eve.ticketing.app.ticket.dto.TicketFilterDto;
 import lombok.AllArgsConstructor;
@@ -33,7 +34,7 @@ public class TicketServiceImpl implements TicketService {
     @Override
     public void createOrUpdateTicket(Ticket ticket) throws TicketProcessingException {
         try {
-            EventShortDescriptionDto eventShortDescriptionDto = verifyEvent(ticket.getEventId());
+            EventShortDescriptionDto eventShortDescriptionDto = getEventShortDescription(ticket.getEventId());
             BigDecimal cost = getTicketCost(eventShortDescriptionDto, ticket.isAdult(), ticket.isStudent());
 
             ticket.setCode(UUID.randomUUID().toString());
@@ -41,7 +42,10 @@ public class TicketServiceImpl implements TicketService {
             ticket.setCost(cost);
 
             if (!eventShortDescriptionDto.isWithoutSeats() && ticket.getId() == null) {
-                ticket.setSeatId(reserveSeat(eventShortDescriptionDto));
+                ticket.setSeatId(reserveSeat(SeatReserveDto.builder()
+                        .eventId(eventShortDescriptionDto.getEventId())
+                        .maxTicketAmount(eventShortDescriptionDto.getMaxTicketAmount())
+                        .build()));
             }
 
             ticketRepository.save(ticket);
@@ -74,17 +78,22 @@ public class TicketServiceImpl implements TicketService {
     @Override
     public void deleteTicketById(long id) throws TicketProcessingException {
         try {
-            // TODO: If field "isSoldOut" is true, change status on false
-            // TODO: Remove seat
+            Ticket ticket = getTicketById(id);
+            EventShortDescriptionDto eventShortDescriptionDto = getEventShortDescription(ticket.getEventId());
+            cancelSeat(SeatCancelDto.builder()
+                    .seatId(ticket.getSeatId())
+                    .isSoldOut(eventShortDescriptionDto.isSoldOut())
+                    .build());
+
             ticketRepository.deleteById(id);
             log.info("Ticket (id=\"{}\") was deleted", id);
         } catch (RuntimeException e) {
             log.error("Ticket (id=\"{}\") was not deleted", id);
-            throw new TicketProcessingException("Ticket was not deleted - invalid event id");
+            throw new TicketProcessingException("Ticket was not deleted - " + e.getMessage());
         }
     }
 
-    private EventShortDescriptionDto verifyEvent(long eventId) throws TicketProcessingException {
+    private EventShortDescriptionDto getEventShortDescription(long eventId) throws TicketProcessingException {
         try {
             EventShortDescriptionDto eventShortDescriptionDto = restTemplate.getForObject(
                     "http://EVENT/api/v1/event/id/{id}/short-description",
@@ -127,19 +136,36 @@ public class TicketServiceImpl implements TicketService {
         throw new TicketProcessingException("Unknown discounts configuration");
     }
 
-    private Long reserveSeat(EventShortDescriptionDto eventShortDescriptionDto) throws TicketProcessingException {
+    private Long reserveSeat(SeatReserveDto seatReserveDto) throws TicketProcessingException {
         try {
             return restTemplate.exchange(
                     "http://SEAT/api/v1/seat/reserve",
                     HttpMethod.PUT,
                     new HttpEntity<>(SeatReserveDto.builder()
-                            .eventId(eventShortDescriptionDto.getEventId())
-                            .maxTicketAmount(eventShortDescriptionDto.getMaxTicketAmount())
+                            .eventId(seatReserveDto.getEventId())
+                            .maxTicketAmount(seatReserveDto.getMaxTicketAmount())
                             .build()),
                     Long.class
             ).getBody();
         } catch (RestClientException e) {
-            log.error("Ticket (eventId={}) was not created - {}", eventShortDescriptionDto.getEventId(), e.getMessage());
+            log.error("Ticket (eventId={}) was not created - {}", seatReserveDto.getEventId(), e.getMessage());
+            throw new TicketProcessingException("Unable to communicate with seat server");
+        }
+    }
+
+    private void cancelSeat(SeatCancelDto seatCancelDto) {
+        try {
+            restTemplate.exchange(
+                    "http://SEAT/api/v1/seat/cancel",
+                    HttpMethod.PUT,
+                    new HttpEntity<>(SeatCancelDto.builder()
+                            .seatId(seatCancelDto.getSeatId())
+                            .isSoldOut(seatCancelDto.getIsSoldOut())
+                            .build()),
+                    void.class
+            );
+        } catch (RestClientException e) {
+            log.error("Ticket (seatId={}) was not canceled - {}", seatCancelDto.getSeatId(), e.getMessage());
             throw new TicketProcessingException("Unable to communicate with seat server");
         }
     }
