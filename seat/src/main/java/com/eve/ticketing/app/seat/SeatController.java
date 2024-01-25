@@ -1,8 +1,10 @@
 package com.eve.ticketing.app.seat;
 
+import com.eve.ticketing.app.seat.dto.SeatCancelDto;
 import com.eve.ticketing.app.seat.dto.SeatFilterDto;
 import com.eve.ticketing.app.seat.dto.SeatReserveDto;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -47,12 +49,22 @@ public class SeatController {
     }
 
     @PutMapping("/reserve")
-    public ResponseEntity<Long> reserveSeat(@RequestBody SeatReserveDto seatReserveDto) {
+    public ResponseEntity<Long> reserveSeat(@Valid @RequestBody SeatReserveDto seatReserveDto) {
         try {
             Seat seat = seatService.reserveSeat(seatReserveDto);
             return new ResponseEntity<>(seat.getId(), HttpStatus.OK);
         } catch (SeatProcessingException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PutMapping("/cancel")
+    public ResponseEntity<?> cancelSeat(@Valid @RequestBody SeatCancelDto seatCancelDto) {
+        try {
+            seatService.cancelSeat(seatCancelDto);
+            return new ResponseEntity<>(HttpStatus.OK);
+        } catch (SeatProcessingException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }
 

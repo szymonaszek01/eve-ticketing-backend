@@ -8,11 +8,11 @@ import lombok.*;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class SeatReserveDto {
+public class SeatCancelDto {
 
     @NotNull
-    private Long eventId;
+    private Long seatId;
 
     @NotNull
-    private Long maxTicketAmount;
+    private Boolean isSoldOut;
 }

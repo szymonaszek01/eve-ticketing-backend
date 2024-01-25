@@ -1,6 +1,7 @@
 package com.eve.ticketing.app.seat;
 
 import com.eve.ticketing.app.seat.dto.EventSoldOutDto;
+import com.eve.ticketing.app.seat.dto.SeatCancelDto;
 import com.eve.ticketing.app.seat.dto.SeatFilterDto;
 import com.eve.ticketing.app.seat.dto.SeatReserveDto;
 import lombok.AllArgsConstructor;
@@ -63,6 +64,19 @@ public class SeatServiceImpl implements SeatService {
         createOrUpdateSeat(seat);
 
         return seat;
+    }
+
+    @Override
+    public void cancelSeat(SeatCancelDto seatCancelDto) throws SeatProcessingException {
+        Seat seat = getSeatById(seatCancelDto.getSeatId());
+        seat.setOccupied(false);
+        if (seatCancelDto.getIsSoldOut()) {
+            setEventSoldOut(EventSoldOutDto.builder()
+                    .eventId(seat.getEventId())
+                    .isSoldOut(false)
+                    .build());
+        }
+        createOrUpdateSeat(seat);
     }
 
     @Override

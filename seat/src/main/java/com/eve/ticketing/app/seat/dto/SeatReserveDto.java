@@ -1,5 +1,6 @@
 package com.eve.ticketing.app.seat.dto;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 @Builder
@@ -9,7 +10,9 @@ import lombok.*;
 @NoArgsConstructor
 public class SeatReserveDto {
 
-    long eventId;
+    @NotNull
+    private Long eventId;
 
-    long maxTicketAmount;
+    @NotNull
+    private Long maxTicketAmount;
 }

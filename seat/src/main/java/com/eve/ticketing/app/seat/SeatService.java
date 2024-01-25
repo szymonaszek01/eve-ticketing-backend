@@ -1,5 +1,6 @@
 package com.eve.ticketing.app.seat;
 
+import com.eve.ticketing.app.seat.dto.SeatCancelDto;
 import com.eve.ticketing.app.seat.dto.SeatFilterDto;
 import com.eve.ticketing.app.seat.dto.SeatReserveDto;
 import org.springframework.data.domain.Page;
@@ -11,6 +12,8 @@ public interface SeatService {
     Seat getSeatById(long id) throws SeatProcessingException;
 
     Seat reserveSeat(SeatReserveDto seatReserveDto) throws SeatProcessingException;
+
+    void cancelSeat(SeatCancelDto seatCancelDto) throws SeatProcessingException;
 
     Page<Seat> getSeatList(int page, int size, SeatFilterDto seatFilterDto);
 
