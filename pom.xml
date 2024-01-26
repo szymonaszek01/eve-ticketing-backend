@@ -13,6 +13,7 @@
 		<module>ticket</module>
 		<module>eureka-server</module>
         <module>seat</module>
+        <module>sms-notification</module>
     </modules>
 
 	<name>microservices</name>
