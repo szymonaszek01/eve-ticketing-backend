@@ -1,0 +1,28 @@
+server:
+    port: 8083
+spring:
+    application:
+        name: sms-notification
+    datasource:
+        password: password
+        url: jdbc:postgresql://localhost:5432/sms-notification
+        username: szymonj
+    jpa:
+        hibernate:
+            ddl-auto: create-drop
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.PostgreSQLDialect
+                format_sql: true
+        show-sql: false
+        open-in-view: false
+eureka:
+    client:
+        service-url:
+            defaultZone: http://localhost:8761/eureka
+        fetch-registry: true
+        register-with-eureka: true
+twilio:
+    account_sid: AC2771d5922a82154c5c8d2bc789845e49
+    auth_token: bb5690a49a9d9b193634d1c39517c470
+    trial_number: +15104661811
