@@ -4,9 +4,9 @@ spring:
     application:
         name: ticket
     datasource:
-        password: password
-        url: jdbc:postgresql://localhost:5432/ticket
-        username: szymonj
+        password: ${DB_PASSWORD_TICKET}
+        url: ${DB_URL_TICKET}
+        username: ${DB_USERNAME_TICKET}
     jpa:
         hibernate:
             ddl-auto: create-drop
@@ -19,6 +19,6 @@ spring:
 eureka:
     client:
         service-url:
-            defaultZone: http://localhost:8761/eureka
+            defaultZone: ${EUREKA_SERVER}
         fetch-registry: true
         register-with-eureka: true

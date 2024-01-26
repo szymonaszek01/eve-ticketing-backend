@@ -10,4 +10,14 @@ Microservice application is used to support event management.
 * Spring Boot
 * PostgreSQL
 
+### Microservices registration:
+* Service Discovery
+* Eureka Server/Client
+
+### Microservices communication:
+* Rest Template
+
+### Sms notifications:
+* Twilio
+
 ### 

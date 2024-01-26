@@ -4,9 +4,9 @@ spring:
     application:
         name: sms-notification
     datasource:
-        password: password
-        url: jdbc:postgresql://localhost:5432/sms-notification
-        username: szymonj
+        password: ${DB_PASSWORD_SMS_NOTIFICATION}
+        url: ${DB_URL_SMS_NOTIFICATION}
+        username: ${DB_USERNAME_SMS_NOTIFICATION}
     jpa:
         hibernate:
             ddl-auto: create-drop
@@ -19,10 +19,10 @@ spring:
 eureka:
     client:
         service-url:
-            defaultZone: http://localhost:8761/eureka
+            defaultZone: ${EUREKA_SERVER}
         fetch-registry: true
         register-with-eureka: true
 twilio:
-    account_sid: AC2771d5922a82154c5c8d2bc789845e49
-    auth_token: bb5690a49a9d9b193634d1c39517c470
-    trial_number: +15104661811
+    account_sid: ${TWILIO_ACCOUNT_SID}
+    auth_token: ${TWILIO_AUTH_TOKEN}
+    trial_number: ${TWILIO_TRIAL_NUMBER}
