@@ -1,9 +1,6 @@
 package com.eve.ticketing.app.ticket;
 
-import com.eve.ticketing.app.ticket.dto.EventShortDescriptionDto;
-import com.eve.ticketing.app.ticket.dto.SeatCancelDto;
-import com.eve.ticketing.app.ticket.dto.SeatReserveDto;
-import com.eve.ticketing.app.ticket.dto.TicketFilterDto;
+import com.eve.ticketing.app.ticket.dto.*;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -49,6 +46,7 @@ public class TicketServiceImpl implements TicketService {
             }
 
             ticketRepository.save(ticket);
+            sendSmsNotification(ticket);
             log.info("Ticket (code=\"{}\", eventId={}) was created/updated", ticket.getCode(), ticket.getEventId());
         } catch (RuntimeException e) {
             throw new TicketProcessingException("Ticket was not created/updated - " + e.getMessage());
@@ -167,6 +165,26 @@ public class TicketServiceImpl implements TicketService {
         } catch (RestClientException e) {
             log.error("Ticket (seatId={}) was not canceled - {}", seatCancelDto.getSeatId(), e.getMessage());
             throw new TicketProcessingException("Unable to communicate with seat server");
+        }
+    }
+
+    private void sendSmsNotification(Ticket ticket) {
+        try {
+            String message = "Hi " + ticket.getFirstname() + ".\nYou have reserved on " + ticket.getCreatedAt() +
+                    " a ticket with code \"" + ticket.getCode() + "\".";
+            restTemplate.exchange(
+                    "http://SMS-NOTIFICATION/api/v1/sms-notification/create",
+                    HttpMethod.POST,
+                    new HttpEntity<>(SmsNotificationDto.builder()
+                            .phoneNumber(ticket.getPhoneNumber())
+                            .message(message)
+                            .ticketId(ticket.getId())
+                            .build()),
+                    void.class
+            );
+        } catch (RestClientException e) {
+            log.error("Sms notification for ticket (ticketId={}) was not sent - {}", ticket.getId(), e.getMessage());
+            throw new TicketProcessingException("Unable to communicate with sms notification server");
         }
     }
 }
