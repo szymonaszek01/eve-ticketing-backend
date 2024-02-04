@@ -17,6 +17,9 @@ Microservice application is used to support event management.
 ### Microservices communication:
 * Rest Template
 
+### Advanced Message Queuing Protocol:
+* Kafka
+
 ### Sms notifications:
 * Twilio
 

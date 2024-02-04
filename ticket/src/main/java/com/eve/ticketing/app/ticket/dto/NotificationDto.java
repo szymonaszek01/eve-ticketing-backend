@@ -11,21 +11,25 @@ import lombok.*;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class SmsNotificationDto {
+public class NotificationDto {
 
-    @Column(nullable = false)
+    private String email;
+
     @JsonProperty("phone_number")
     @NotNull
     @NotBlank
     private String phoneNumber;
+
+    @JsonProperty("event_name")
+    @NotNull
+    @NotBlank
+    private String firstname;
 
     @Column(nullable = false)
     @NotNull
     @NotBlank
     private String message;
 
-    @Column(nullable = false)
-    @JsonProperty("ticket_id")
     @NotNull
     private Long ticketId;
 }
