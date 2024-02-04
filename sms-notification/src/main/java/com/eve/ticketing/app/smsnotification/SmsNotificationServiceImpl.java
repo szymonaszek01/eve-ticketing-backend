@@ -1,10 +1,8 @@
 package com.eve.ticketing.app.smsnotification;
 
 import com.eve.ticketing.app.smsnotification.dto.SmsNotificationFilterDto;
-import com.eve.ticketing.app.smsnotification.twilio.TwilioSmsSender;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -15,23 +13,15 @@ import static com.eve.ticketing.app.smsnotification.SmsNotificationSpecification
 import static com.eve.ticketing.app.smsnotification.SmsNotificationSpecification.smsNotificationPhoneNumberEqual;
 
 @Slf4j
+@AllArgsConstructor
 @Service
 public class SmsNotificationServiceImpl implements SmsNotificationService {
 
     private final SmsNotificationRepository smsNotificationRepository;
 
-    private final SmsSender smsSender;
-
-    @Autowired
-    public SmsNotificationServiceImpl(SmsNotificationRepository smsNotificationRepository, @Qualifier("twilio") TwilioSmsSender smsSender) {
-        this.smsNotificationRepository = smsNotificationRepository;
-        this.smsSender = smsSender;
-    }
-
     @Override
     public void createSmsNotification(SmsNotification smsNotification) throws SmsNotificationProcessingException {
         try {
-            smsSender.sendSms(smsNotification);
             smsNotificationRepository.save(smsNotification);
             log.info("Sms notification (phoneNumber=\"{}\", ticketId=\"{}\") was created", smsNotification.getPhoneNumber(), smsNotification.getTicketId());
         } catch (RuntimeException e) {

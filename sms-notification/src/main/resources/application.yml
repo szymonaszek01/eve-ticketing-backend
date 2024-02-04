@@ -16,6 +16,9 @@ spring:
                 format_sql: true
         show-sql: false
         open-in-view: false
+    kafka:
+        bootstrap-servers: localhost:9092
+        consumer.value-deserializer: com.eve.ticketing.app.smsnotification.kafka.KafkaNotificationDeserializer
 eureka:
     client:
         service-url:

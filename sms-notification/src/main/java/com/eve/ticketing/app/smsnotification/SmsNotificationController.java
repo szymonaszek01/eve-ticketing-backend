@@ -2,7 +2,6 @@ package com.eve.ticketing.app.smsnotification;
 
 import com.eve.ticketing.app.smsnotification.dto.SmsNotificationFilterDto;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -17,16 +16,6 @@ import org.springframework.web.server.ResponseStatusException;
 public class SmsNotificationController {
 
     private final SmsNotificationServiceImpl smsNotificationService;
-
-    @PostMapping("/create")
-    public ResponseEntity<?> createSmsNotification(@Valid @RequestBody SmsNotification smsNotification) {
-        try {
-            smsNotificationService.createSmsNotification(smsNotification);
-            return new ResponseEntity<>(HttpStatus.CREATED);
-        } catch (SmsNotificationProcessingException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
-        }
-    }
 
     @GetMapping("/id/{id}")
     public ResponseEntity<SmsNotification> getSmsNotificationById(@PathVariable long id) {
