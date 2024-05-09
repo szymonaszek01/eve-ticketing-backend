@@ -5,7 +5,7 @@ spring:
         name: seat
     datasource:
         password: ${DB_PASSWORD_SEAT}
-        url: ${DB_URL_SMS_SEAT}
+        url: ${DB_URL_SEAT}
         username: ${DB_USERNAME_SEAT}
     jpa:
         hibernate:

@@ -14,6 +14,7 @@
 		<module>eureka-server</module>
         <module>seat</module>
         <module>sms-notification</module>
+        <module>cloud-gateway</module>
     </modules>
 
 	<name>microservices</name>

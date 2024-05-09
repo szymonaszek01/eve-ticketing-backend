@@ -20,7 +20,7 @@ public class KafkaNotificationProducer {
     public void publish(NotificationDto notificationDto) {
         try {
             kafkaTemplate.send("notification", notificationDto);
-            log.error("Notification for ticket (ticketId={}) was published successfully", notificationDto.getTicketId());
+            log.info("Notification for ticket (ticketId={}) was published successfully", notificationDto.getTicketId());
         } catch (RuntimeException e) {
             log.error("Notification for ticket (ticketId={}) was not published - {}", notificationDto.getTicketId(), e.getMessage());
         }
