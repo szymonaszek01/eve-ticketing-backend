@@ -34,24 +34,24 @@ public class TicketServiceImpl implements TicketService {
     @Override
     public void createOrUpdateTicket(Ticket ticket) throws TicketProcessingException {
         try {
-            EventShortDescriptionDto eventShortDescriptionDto = getEventShortDescription(ticket.getEventId());
-            BigDecimal cost = getTicketCost(eventShortDescriptionDto, ticket.isAdult(), ticket.isStudent());
+            EventDto eventDto = getEventDto(ticket.getEventId());
+            BigDecimal cost = getTicketCost(eventDto, ticket.isAdult(), ticket.isStudent());
 
             ticket.setCode(UUID.randomUUID().toString());
             ticket.setCreatedAt(new Date(System.currentTimeMillis()));
             ticket.setCost(cost);
 
-            if (!eventShortDescriptionDto.isWithoutSeats() && ticket.getId() == null) {
+            if (!eventDto.isWithoutSeats() && ticket.getId() == null) {
                 ticket.setSeatId(reserveSeat(SeatReserveDto.builder()
-                        .eventId(eventShortDescriptionDto.getEventId())
-                        .maxTicketAmount(eventShortDescriptionDto.getMaxTicketAmount())
+                        .eventId(eventDto.getId())
+                        .maxTicketAmount(eventDto.getMaxTicketAmount())
                         .build()));
             }
 
             ticketRepository.save(ticket);
 
             String message = "Hi " + ticket.getFirstname() + ".\nYou have reserved on the " + ticket.getCreatedAt() +
-                    " a ticket with code \"" + ticket.getCode() + "\" for " + eventShortDescriptionDto.getName() + ".\nSee yoo soon,\nEve ticketing system";
+                    " a ticket with code \"" + ticket.getCode() + "\" for " + eventDto.getName() + ".\nSee yoo soon,\nEve ticketing system";
             kafkaNotificationProducer.publish(NotificationDto.builder()
                     .phoneNumber(ticket.getPhoneNumber())
                     .firstname(ticket.getFirstname())
@@ -69,7 +69,7 @@ public class TicketServiceImpl implements TicketService {
     public Ticket getTicketById(long id) throws TicketProcessingException {
         return ticketRepository.findById(id).orElseThrow(() -> {
             log.error("Ticket (id=\"{}\") was not found", id);
-            throw new TicketProcessingException("Ticket was not found - invalid ticket id");
+            return new TicketProcessingException("Ticket was not found - invalid ticket id");
         });
     }
 
@@ -89,10 +89,10 @@ public class TicketServiceImpl implements TicketService {
     public void deleteTicketById(long id) throws TicketProcessingException {
         try {
             Ticket ticket = getTicketById(id);
-            EventShortDescriptionDto eventShortDescriptionDto = getEventShortDescription(ticket.getEventId());
+            EventDto eventDto = getEventDto(ticket.getEventId());
             cancelSeat(SeatCancelDto.builder()
                     .seatId(ticket.getSeatId())
-                    .isSoldOut(eventShortDescriptionDto.isSoldOut())
+                    .isSoldOut(eventDto.isSoldOut())
                     .build());
 
             ticketRepository.deleteById(id);
@@ -103,46 +103,47 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
-    private EventShortDescriptionDto getEventShortDescription(long eventId) throws TicketProcessingException {
+    private EventDto getEventDto(long eventId) throws TicketProcessingException {
+        EventDto eventDto;
         try {
-            EventShortDescriptionDto eventShortDescriptionDto = restTemplate.getForObject(
-                    "http://EVENT/api/v1/event/id/{id}/short-description",
-                    EventShortDescriptionDto.class,
+            eventDto = restTemplate.getForObject(
+                    "http://EVENT/api/v1/event/id/{id}",
+                    EventDto.class,
                     eventId
             );
-
-            if (eventShortDescriptionDto == null) {
-                log.error("Ticket for Event (id=\"{}\") was not created - event not found", eventId);
-                throw new TicketProcessingException("Event not found");
-            }
-            if (new Date(System.currentTimeMillis()).after(eventShortDescriptionDto.getStartAt())) {
-                log.error("Ticket for Event (id=\"{}\") was not created - event has started", eventId);
-                throw new TicketProcessingException("Event has started");
-            }
-            if (eventShortDescriptionDto.isSoldOut()) {
-                log.error("Ticket for Event (id=\"{}\") was not created - tickets sold out", eventId);
-                throw new TicketProcessingException("Tickets sold out");
-            }
-
-            return eventShortDescriptionDto;
         } catch (RestClientException e) {
-            log.error("Ticket (eventId={}) was not created - {}", eventId, e.getMessage());
+            log.error("Unable to communicate with event server - {}", e.getMessage());
             throw new TicketProcessingException("Unable to communicate with event server");
         }
+
+        if (eventDto == null) {
+            log.error("Ticket for Event (id=\"{}\") was not created - event not found", eventId);
+            throw new TicketProcessingException("Event not found");
+        }
+        if (new Date(System.currentTimeMillis()).after(eventDto.getStartAt())) {
+            log.error("Ticket for Event (id=\"{}\") was not created - event has started", eventId);
+            throw new TicketProcessingException("Event has started");
+        }
+        if (eventDto.isSoldOut()) {
+            log.error("Ticket for Event (id=\"{}\") was not created - tickets sold out", eventId);
+            throw new TicketProcessingException("Tickets sold out");
+        }
+
+        return eventDto;
     }
 
-    private BigDecimal getTicketCost(EventShortDescriptionDto eventShortDescriptionDto, boolean isAdult, boolean isStudent) throws TicketProcessingException {
-        if (!isAdult && eventShortDescriptionDto.getChildrenDiscount() != null) {
-            return eventShortDescriptionDto.getUnitPrice().multiply(BigDecimal.ONE.subtract(eventShortDescriptionDto.getChildrenDiscount()));
+    private BigDecimal getTicketCost(EventDto eventDto, boolean isAdult, boolean isStudent) throws TicketProcessingException {
+        if (!isAdult && eventDto.getChildrenDiscount() != null) {
+            return eventDto.getUnitPrice().multiply(BigDecimal.ONE.subtract(eventDto.getChildrenDiscount()));
         }
-        if (isAdult && isStudent && eventShortDescriptionDto.getStudentsDiscount() != null) {
-            return eventShortDescriptionDto.getUnitPrice().multiply(BigDecimal.ONE.subtract(eventShortDescriptionDto.getStudentsDiscount()));
+        if (isAdult && isStudent && eventDto.getStudentsDiscount() != null) {
+            return eventDto.getUnitPrice().multiply(BigDecimal.ONE.subtract(eventDto.getStudentsDiscount()));
         }
         if (isAdult) {
-            return eventShortDescriptionDto.getUnitPrice();
+            return eventDto.getUnitPrice();
         }
 
-        log.error("Unable to calculate Ticket cost for Event (id=\"{}\")", eventShortDescriptionDto.getEventId());
+        log.error("Unable to calculate Ticket cost for Event (id=\"{}\")", eventDto.getId());
         throw new TicketProcessingException("Unknown discounts configuration");
     }
 

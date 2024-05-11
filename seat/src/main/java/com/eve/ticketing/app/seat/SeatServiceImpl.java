@@ -1,6 +1,5 @@
 package com.eve.ticketing.app.seat;
 
-import com.eve.ticketing.app.seat.dto.EventSoldOutDto;
 import com.eve.ticketing.app.seat.dto.SeatCancelDto;
 import com.eve.ticketing.app.seat.dto.SeatFilterDto;
 import com.eve.ticketing.app.seat.dto.SeatReserveDto;
@@ -15,6 +14,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.HashMap;
 
 import static com.eve.ticketing.app.seat.SeatSpecification.*;
 
@@ -42,7 +43,7 @@ public class SeatServiceImpl implements SeatService {
     public Seat getSeatById(long id) throws SeatProcessingException {
         return seatRepository.findById(id).orElseThrow(() -> {
             log.error("Seat (id=\"{}\") was not found", id);
-            throw new SeatProcessingException("Seat was not found - invalid seat id");
+            return new SeatProcessingException("Seat was not found - invalid seat id");
         });
     }
 
@@ -56,10 +57,7 @@ public class SeatServiceImpl implements SeatService {
         seat.setOccupied(true);
         long currentTicketAmount = seatRepository.countByEventIdAndOccupiedTrue(seatReserveDto.getEventId());
         if (currentTicketAmount + 1 == seatReserveDto.getMaxTicketAmount()) {
-            setEventSoldOut(EventSoldOutDto.builder()
-                    .eventId(seatReserveDto.getEventId())
-                    .isSoldOut(true)
-                    .build());
+            updateIsSoldOutInEvent(seatReserveDto.getEventId(), true);
         }
         createOrUpdateSeat(seat);
 
@@ -71,10 +69,7 @@ public class SeatServiceImpl implements SeatService {
         Seat seat = getSeatById(seatCancelDto.getSeatId());
         seat.setOccupied(false);
         if (seatCancelDto.getIsSoldOut()) {
-            setEventSoldOut(EventSoldOutDto.builder()
-                    .eventId(seat.getEventId())
-                    .isSoldOut(false)
-                    .build());
+            updateIsSoldOutInEvent(seat.getEventId(), false);
         }
         createOrUpdateSeat(seat);
     }
@@ -100,19 +95,19 @@ public class SeatServiceImpl implements SeatService {
         }
     }
 
-    private void setEventSoldOut(EventSoldOutDto eventSoldOutDto) {
+    private void updateIsSoldOutInEvent(Long eventId, boolean isSoldOut) {
         try {
+            HashMap<String, Object> values = new HashMap<>(2);
+            values.put("id", eventId);
+            values.put("is_sold_out", isSoldOut);
             restTemplate.exchange(
-                    "http://EVENT/api/v1/event/update/sold-out",
+                    "http://EVENT/api/v1/event/update",
                     HttpMethod.PUT,
-                    new HttpEntity<>(EventSoldOutDto.builder()
-                            .eventId(eventSoldOutDto.getEventId())
-                            .isSoldOut(true)
-                            .build()),
+                    new HttpEntity<>(values),
                     void.class
             );
         } catch (RestClientException e) {
-            log.error("Event (eventId={}) was not sold out - {}", eventSoldOutDto.getEventId(), e.getMessage());
+            log.error("Unable to communicate with event server - {}", e.getMessage());
             throw new SeatProcessingException("Unable to communicate with event server");
         }
     }
