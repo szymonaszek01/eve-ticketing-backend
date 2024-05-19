@@ -18,7 +18,7 @@ public class Error {
 
     private Object value;
 
-    private String message;
+    private String description;
 
     @Override
     public String toString() {
@@ -26,7 +26,7 @@ public class Error {
         hashMap.put("method", method);
         hashMap.put("field", field);
         hashMap.put("value", value);
-        hashMap.put("message", message);
+        hashMap.put("description", description);
         JSONObject jsonObject = new JSONObject(hashMap);
         return jsonObject.toString();
     }

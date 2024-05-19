@@ -47,7 +47,7 @@ public class EventServiceImpl implements EventService {
     @Override
     public Event getEventById(long id) throws EventProcessingException {
         return eventRepository.findById(id).orElseThrow(() -> {
-            Error error = Error.builder().method("GET").field("id").value(id).message("id not found").build();
+            Error error = Error.builder().method("GET").field("id").value(id).description("id not found").build();
             log.error(error.toString());
             return new EventProcessingException(HttpStatus.NOT_FOUND, error);
         });
@@ -58,14 +58,14 @@ public class EventServiceImpl implements EventService {
     public void createEvent(Event event) throws EventProcessingException, ConstraintViolationException {
         try {
             if (event.getEndAt().before(event.getStartAt())) {
-                Error error = Error.builder().method("POST").field("start_at").value(event.getStartAt()).message("end date can not be before start date").build();
+                Error error = Error.builder().method("POST").field("start_at").value(event.getStartAt()).description("end date can not be before start date").build();
                 log.error(error.toString());
                 throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
             }
             eventRepository.save(event);
             log.info("Event (id=\"{}\") was created", event.getId());
         } catch (RuntimeException e) {
-            Error error = Error.builder().method("POST").field("name").value(event.getName()).message("invalid parameters").build();
+            Error error = Error.builder().method("POST").field("name").value(event.getName()).description("invalid parameters").build();
             log.error(error.toString());
             throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
         }
@@ -78,14 +78,14 @@ public class EventServiceImpl implements EventService {
         if (values == null) {
             error.setField("values");
             error.setValue("");
-            error.setMessage("empty values");
+            error.setDescription("empty values");
             log.error(error.toString());
             throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
         }
         if (values.get("id") == null || !(values.get("id") instanceof Number)) {
             error.setField("id");
             error.setValue(Objects.toString(values.get("id"), ""));
-            error.setMessage("can not be null or has different type than Number");
+            error.setDescription("can not be null or has different type than Number");
             log.error(error.toString());
             throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
         }
@@ -98,37 +98,30 @@ public class EventServiceImpl implements EventService {
                 error.setField(key);
                 error.setValue(value);
                 field.setAccessible(true);
-                boolean isUpdated = false;
                 if (value instanceof String || value instanceof Boolean) {
                     if ("startAt".equals(convertedKey) || "endAt".equals(convertedKey)) {
                         DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                         value = formatter.parse(Objects.toString(value, ""));
                     }
                     field.set(event, value);
-                    isUpdated = true;
                 }
                 if (value instanceof Number && "maxTicketAmount".equals(convertedKey)) {
                     field.set(event, ((Number) value).longValue());
-                    isUpdated = true;
                 }
                 if (value instanceof Double && ("unitPrice".equals(convertedKey) || "childrenDiscount".equals(convertedKey) || "studentsDiscount".equals(convertedKey))) {
                     field.set(event, BigDecimal.valueOf((Double) value));
-                    isUpdated = true;
-                }
-                if (isUpdated) {
-                    log.info("Event (id=\"{}\") field \"{}\" was updated to \"{}\"", event.getId(), convertedKey, Objects.toString(value, ""));
                 }
             } catch (NullPointerException e) {
-                error.setMessage("field can not be null");
+                error.setDescription("field can not be null");
                 log.error(error.toString());
             } catch (NoSuchFieldException e) {
-                error.setMessage("field does not exists");
+                error.setDescription("field does not exists");
                 log.error(error.toString());
             } catch (IllegalAccessException e) {
-                error.setMessage("illegal access to field");
+                error.setDescription("illegal access to field");
                 log.error(error.toString());
             } catch (ParseException e) {
-                error.setMessage(e.getMessage());
+                error.setDescription(e.getMessage());
                 log.error(error.toString());
             }
         });
@@ -136,7 +129,7 @@ public class EventServiceImpl implements EventService {
         if (event.getEndAt().before(event.getStartAt())) {
             error.setField("start_at");
             error.setValue(event.getStartAt());
-            error.setMessage("end date can not be before start date");
+            error.setDescription("end date can not be before start date");
             log.error(error.toString());
             throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
         }
@@ -153,7 +146,7 @@ public class EventServiceImpl implements EventService {
             eventRepository.deleteById(id);
             log.info("Event (id=\"{}\") was deleted", id);
         } catch (RuntimeException e) {
-            Error error = Error.builder().method("DELETE").field("id").value(id).message("id not found").build();
+            Error error = Error.builder().method("DELETE").field("id").value(id).description("id not found").build();
             log.error(error.toString());
         }
     }
