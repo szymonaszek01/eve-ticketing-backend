@@ -9,7 +9,7 @@ import java.util.Optional;
 @Repository
 public interface SeatRepository extends JpaRepository<Seat, Long>, JpaSpecificationExecutor<Seat> {
 
-    Optional<Seat> findFirstByEventIdAndOccupiedIsFalse(long eventId);
+    Optional<Seat> findFirstByEventIdAndOccupiedIsFalse(Long eventId);
 
-    long countByEventIdAndOccupiedTrue(long eventId);
+    long countByEventIdAndOccupiedTrue(Long eventId);
 }

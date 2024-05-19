@@ -38,7 +38,7 @@ public class EventInitializer implements CommandLineRunner {
 
     private Event createEvent(Date date, Long maxTicketAmount, boolean isWithoutSeats) {
         Faker faker = new Faker();
-        date = date == null ? faker.date().between(new Date((System.currentTimeMillis() - 2 * YEAR)), new Date((System.currentTimeMillis() + 2 * YEAR))) : date;
+        date = date == null ? faker.date().between(new Date((System.currentTimeMillis() + YEAR)), new Date((System.currentTimeMillis() + 4 * YEAR))) : date;
         return Event.builder()
                 .name(capitalize(String.join(" ", faker.lorem().words(3))))
                 .description(String.join(" ", faker.lorem().sentences(5)))
@@ -46,8 +46,8 @@ public class EventInitializer implements CommandLineRunner {
                 .isSoldOut(false)
                 .unitPrice(BigDecimal.valueOf(faker.number().numberBetween(100, 1000)))
                 .currency("$")
-                .childrenDiscount(BigDecimal.valueOf(0.2))
-                .studentsDiscount(BigDecimal.valueOf(0.5))
+                .childrenDiscount(BigDecimal.valueOf(20))
+                .studentsDiscount(BigDecimal.valueOf(50))
                 .startAt(date)
                 .endAt(new Date(date.getTime() + 2 * HOUR))
                 .country(faker.address().country())

@@ -5,11 +5,11 @@ import org.springframework.data.domain.Page;
 
 public interface SmsNotificationService {
 
-    void createSmsNotification(SmsNotification smsNotification) throws SmsNotificationProcessingException;
+    Page<SmsNotification> getSmsNotificationList(int page, int size, SmsNotificationFilterDto SmsNotificationFilterDto);
 
     SmsNotification getSmsNotificationById(long id) throws SmsNotificationProcessingException;
 
-    Page<SmsNotification> getSmsNotificationList(int page, int size, SmsNotificationFilterDto SmsNotificationFilterDto);
+    void createSmsNotification(SmsNotification smsNotification) throws SmsNotificationProcessingException;
 
     void deleteSmsNotificationById(long id) throws SmsNotificationProcessingException;
 }

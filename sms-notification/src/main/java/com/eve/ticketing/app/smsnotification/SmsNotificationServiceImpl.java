@@ -8,6 +8,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import static com.eve.ticketing.app.smsnotification.SmsNotificationSpecification.smsNotificationMessageEqual;
 import static com.eve.ticketing.app.smsnotification.SmsNotificationSpecification.smsNotificationPhoneNumberEqual;
@@ -20,6 +22,24 @@ public class SmsNotificationServiceImpl implements SmsNotificationService {
     private final SmsNotificationRepository smsNotificationRepository;
 
     @Override
+    public Page<SmsNotification> getSmsNotificationList(int page, int size, SmsNotificationFilterDto smsNotificationFilterDto) {
+        Specification<SmsNotification> smsNotificationSpecification = Specification.where(smsNotificationPhoneNumberEqual(smsNotificationFilterDto.getPhoneNumber()))
+                .and(smsNotificationMessageEqual(smsNotificationFilterDto.getMessage()));
+        Pageable pageable = PageRequest.of(page, size);
+
+        return smsNotificationRepository.findAll(smsNotificationSpecification, pageable);
+    }
+
+    @Override
+    public SmsNotification getSmsNotificationById(long id) throws SmsNotificationProcessingException {
+        return smsNotificationRepository.findById(id).orElseThrow(() -> {
+            log.error("Sms notification (id=\"{}\") was not found", id);
+            return new SmsNotificationProcessingException("Sms notification was not found - invalid sms notification id");
+        });
+    }
+
+    @Override
+    @Transactional
     public void createSmsNotification(SmsNotification smsNotification) throws SmsNotificationProcessingException {
         try {
             smsNotificationRepository.save(smsNotification);
@@ -31,23 +51,7 @@ public class SmsNotificationServiceImpl implements SmsNotificationService {
     }
 
     @Override
-    public SmsNotification getSmsNotificationById(long id) throws SmsNotificationProcessingException {
-        return smsNotificationRepository.findById(id).orElseThrow(() -> {
-            log.error("Sms notification (id=\"{}\") was not found", id);
-            throw new SmsNotificationProcessingException("Sms notification was not found - invalid sms notification id");
-        });
-    }
-
-    @Override
-    public Page<SmsNotification> getSmsNotificationList(int page, int size, SmsNotificationFilterDto smsNotificationFilterDto) {
-        Specification<SmsNotification> smsNotificationSpecification = Specification.where(smsNotificationPhoneNumberEqual(smsNotificationFilterDto.getPhoneNumber()))
-                .and(smsNotificationMessageEqual(smsNotificationFilterDto.getMessage()));
-        Pageable pageable = PageRequest.of(page, size);
-
-        return smsNotificationRepository.findAll(smsNotificationSpecification, pageable);
-    }
-
-    @Override
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public void deleteSmsNotificationById(long id) throws SmsNotificationProcessingException {
         try {
             smsNotificationRepository.deleteById(id);

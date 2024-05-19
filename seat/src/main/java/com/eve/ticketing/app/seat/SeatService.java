@@ -1,21 +1,19 @@
 package com.eve.ticketing.app.seat;
 
-import com.eve.ticketing.app.seat.dto.SeatCancelDto;
 import com.eve.ticketing.app.seat.dto.SeatFilterDto;
-import com.eve.ticketing.app.seat.dto.SeatReserveDto;
 import org.springframework.data.domain.Page;
+
+import java.util.HashMap;
 
 public interface SeatService {
 
-    void createOrUpdateSeat(Seat seat) throws SeatProcessingException;
+    Page<Seat> getSeatList(int page, int size, SeatFilterDto seatFilterDto);
 
     Seat getSeatById(long id) throws SeatProcessingException;
 
-    Seat reserveSeat(SeatReserveDto seatReserveDto) throws SeatProcessingException;
+    void createSeat(Seat seat) throws SeatProcessingException;
 
-    void cancelSeat(SeatCancelDto seatCancelDto) throws SeatProcessingException;
-
-    Page<Seat> getSeatList(int page, int size, SeatFilterDto seatFilterDto);
+    Seat updateSeat(HashMap<String, Object> values) throws SeatProcessingException;
 
     void deleteSeatById(long id) throws SeatProcessingException;
 }

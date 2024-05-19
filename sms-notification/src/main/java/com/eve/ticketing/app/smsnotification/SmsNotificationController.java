@@ -17,6 +17,14 @@ public class SmsNotificationController {
 
     private final SmsNotificationServiceImpl smsNotificationService;
 
+    @GetMapping("/all")
+    public ResponseEntity<Page<SmsNotification>> getSmsNotificationList(@RequestParam(value = "page") int page,
+                                                                        @RequestParam(value = "size") int size,
+                                                                        SmsNotificationFilterDto smsNotificationFilterDto) {
+        Page<SmsNotification> smsNotificationPage = smsNotificationService.getSmsNotificationList(page, size, smsNotificationFilterDto);
+        return new ResponseEntity<>(smsNotificationPage, HttpStatus.OK);
+    }
+
     @GetMapping("/id/{id}")
     public ResponseEntity<SmsNotification> getSmsNotificationById(@PathVariable long id) {
         try {
@@ -25,14 +33,6 @@ public class SmsNotificationController {
         } catch (SmsNotificationProcessingException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
         }
-    }
-
-    @GetMapping("/all")
-    public ResponseEntity<Page<SmsNotification>> getSmsNotificationList(@RequestParam(value = "page") int page,
-                                                                        @RequestParam(value = "size") int size,
-                                                                        SmsNotificationFilterDto smsNotificationFilterDto) {
-        Page<SmsNotification> smsNotificationPage = smsNotificationService.getSmsNotificationList(page, size, smsNotificationFilterDto);
-        return new ResponseEntity<>(smsNotificationPage, HttpStatus.OK);
     }
 
     @DeleteMapping("/id/{id}")

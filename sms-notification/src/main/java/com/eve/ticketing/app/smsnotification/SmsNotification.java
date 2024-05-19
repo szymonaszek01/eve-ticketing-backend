@@ -2,6 +2,7 @@ package com.eve.ticketing.app.smsnotification;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -20,17 +21,16 @@ public class SmsNotification {
 
     @Column(nullable = false)
     @JsonProperty("phone_number")
-    @NotNull
-    @NotBlank
+    @NotBlank(message = "Field \"phone_number\" should not be blank")
     private String phoneNumber;
 
     @Column(nullable = false)
-    @NotNull
-    @NotBlank
+    @NotBlank(message = "Field \"message\" should not be blank")
     private String message;
 
     @Column(nullable = false)
     @JsonProperty("ticket_id")
-    @NotNull
+    @NotNull(message = "Field \"ticket_id\" should not be \"null\"")
+    @Min(value = 1, message = "Field \"ticket_id\" should be greater than \"0\"")
     private Long ticketId;
 }

@@ -1,13 +1,16 @@
 package com.eve.ticketing.app.event;
 
 import com.eve.ticketing.app.event.dto.EventFilterDto;
+import com.eve.ticketing.app.event.exception.Error;
+import com.eve.ticketing.app.event.exception.EventProcessingException;
+import jakarta.validation.ConstraintViolationException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,29 +47,47 @@ public class EventServiceImpl implements EventService {
     @Override
     public Event getEventById(long id) throws EventProcessingException {
         return eventRepository.findById(id).orElseThrow(() -> {
-            log.error("Event (id=\"{}\") was not found", id);
-            return new EventProcessingException("Event was not found - invalid event id");
+            Error error = Error.builder().method("GET").field("id").value(id).message("id not found").build();
+            log.error(error.toString());
+            return new EventProcessingException(HttpStatus.NOT_FOUND, error);
         });
     }
 
     @Override
     @Transactional
-    public void createEvent(Event event) throws EventProcessingException {
+    public void createEvent(Event event) throws EventProcessingException, ConstraintViolationException {
         try {
+            if (event.getEndAt().before(event.getStartAt())) {
+                Error error = Error.builder().method("POST").field("start_at").value(event.getStartAt()).message("end date can not be before start date").build();
+                log.error(error.toString());
+                throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
+            }
             eventRepository.save(event);
             log.info("Event (id=\"{}\") was created", event.getId());
         } catch (RuntimeException e) {
-            log.error("Event was not created - {}", e.getMessage());
-            throw new EventProcessingException("Event was not created - " + e.getMessage());
+            Error error = Error.builder().method("POST").field("name").value(event.getName()).message("invalid parameters").build();
+            log.error(error.toString());
+            throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
         }
     }
 
     @Override
     @Transactional(isolation = Isolation.SERIALIZABLE)
-    public void updateEvent(HashMap<String, Object> values) throws EventProcessingException {
+    public Event updateEvent(HashMap<String, Object> values) throws EventProcessingException, ConstraintViolationException {
+        Error error = Error.builder().method("PUT").build();
         if (values == null) {
-            log.error("Event was not updated - empty values");
-            throw new EventProcessingException("Event was not updated - empty values");
+            error.setField("values");
+            error.setValue("");
+            error.setMessage("empty values");
+            log.error(error.toString());
+            throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
+        }
+        if (values.get("id") == null || !(values.get("id") instanceof Number)) {
+            error.setField("id");
+            error.setValue(Objects.toString(values.get("id"), ""));
+            error.setMessage("can not be null or has different type than Number");
+            log.error(error.toString());
+            throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
         }
 
         Event event = getEventById(((Number) values.remove("id")).longValue());
@@ -74,9 +95,11 @@ public class EventServiceImpl implements EventService {
             String convertedKey = toCamelCase(key);
             try {
                 Field field = event.getClass().getDeclaredField(convertedKey);
+                error.setField(key);
+                error.setValue(value);
                 field.setAccessible(true);
                 boolean isUpdated = false;
-                if ((value instanceof String && !StringUtils.isBlank((String) value)) || (value instanceof Boolean)) {
+                if (value instanceof String || value instanceof Boolean) {
                     if ("startAt".equals(convertedKey) || "endAt".equals(convertedKey)) {
                         DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                         value = formatter.parse(Objects.toString(value, ""));
@@ -84,11 +107,11 @@ public class EventServiceImpl implements EventService {
                     field.set(event, value);
                     isUpdated = true;
                 }
-                if ((value instanceof Number && 0 <= ((Number) value).longValue()) && "maxTicketAmount".equals(convertedKey)) {
+                if (value instanceof Number && "maxTicketAmount".equals(convertedKey)) {
                     field.set(event, ((Number) value).longValue());
                     isUpdated = true;
                 }
-                if ((value instanceof Double && 0 <= (Double) value) && ("unitPrice".equals(convertedKey) || "childrenDiscount".equals(convertedKey) || "studentsDiscount".equals(convertedKey))) {
+                if (value instanceof Double && ("unitPrice".equals(convertedKey) || "childrenDiscount".equals(convertedKey) || "studentsDiscount".equals(convertedKey))) {
                     field.set(event, BigDecimal.valueOf((Double) value));
                     isUpdated = true;
                 }
@@ -96,20 +119,31 @@ public class EventServiceImpl implements EventService {
                     log.info("Event (id=\"{}\") field \"{}\" was updated to \"{}\"", event.getId(), convertedKey, Objects.toString(value, ""));
                 }
             } catch (NullPointerException e) {
-                log.error("Event (id=\"{}\") was not updated - field can not be null", event.getId());
+                error.setMessage("field can not be null");
+                log.error(error.toString());
             } catch (NoSuchFieldException e) {
-                log.error("Event (id=\"{}\") was not updated - field \"{}\" does not exist", event.getId(), convertedKey);
+                error.setMessage("field does not exists");
+                log.error(error.toString());
             } catch (IllegalAccessException e) {
-                log.error("Event (id=\"{}\") was not updated - illegal access to field \"{}\"", event.getId(), convertedKey);
+                error.setMessage("illegal access to field");
+                log.error(error.toString());
             } catch (ParseException e) {
-                log.error(e.getMessage());
+                error.setMessage(e.getMessage());
+                log.error(error.toString());
             }
         });
 
         if (event.getEndAt().before(event.getStartAt())) {
-            log.error("Event was not updated - end date can not be before start date");
-            throw new EventProcessingException("Event was not updated - end date can not be before start date");
+            error.setField("start_at");
+            error.setValue(event.getStartAt());
+            error.setMessage("end date can not be before start date");
+            log.error(error.toString());
+            throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
         }
+
+        eventRepository.flush();
+
+        return event;
     }
 
     @Override
@@ -119,8 +153,8 @@ public class EventServiceImpl implements EventService {
             eventRepository.deleteById(id);
             log.info("Event (id=\"{}\") was deleted", id);
         } catch (RuntimeException e) {
-            log.error("Event (id=\"{}\") was not deleted", id);
-            throw new EventProcessingException("Event was not deleted - invalid event id");
+            Error error = Error.builder().method("DELETE").field("id").value(id).message("id not found").build();
+            log.error(error.toString());
         }
     }
 
