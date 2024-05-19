@@ -65,18 +65,18 @@ public class EventServiceImpl implements EventService {
             eventRepository.save(event);
             log.info("Event (id=\"{}\") was created", event.getId());
         } catch (RuntimeException e) {
-            Error error = Error.builder().method("POST").field("name").value(event.getName()).description("invalid parameters").build();
+            Error error = Error.builder().method("POST").field("").value(event).description("invalid parameters").build();
             log.error(error.toString());
             throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
         }
     }
 
     @Override
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     public Event updateEvent(HashMap<String, Object> values) throws EventProcessingException, ConstraintViolationException {
         Error error = Error.builder().method("PUT").build();
         if (values == null) {
-            error.setField("values");
+            error.setField("");
             error.setValue("");
             error.setDescription("empty values");
             log.error(error.toString());
@@ -95,9 +95,9 @@ public class EventServiceImpl implements EventService {
             String convertedKey = toCamelCase(key);
             try {
                 Field field = event.getClass().getDeclaredField(convertedKey);
+                field.setAccessible(true);
                 error.setField(key);
                 error.setValue(value);
-                field.setAccessible(true);
                 if (value instanceof String || value instanceof Boolean) {
                     if ("startAt".equals(convertedKey) || "endAt".equals(convertedKey)) {
                         DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -140,7 +140,7 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void deleteEventById(long id) throws EventProcessingException {
         try {
             eventRepository.deleteById(id);
@@ -148,6 +148,7 @@ public class EventServiceImpl implements EventService {
         } catch (RuntimeException e) {
             Error error = Error.builder().method("DELETE").field("id").value(id).description("id not found").build();
             log.error(error.toString());
+            throw new EventProcessingException(HttpStatus.NOT_FOUND, error);
         }
     }
 
