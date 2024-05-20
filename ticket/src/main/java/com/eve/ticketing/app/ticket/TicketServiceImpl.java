@@ -4,16 +4,19 @@ import com.eve.ticketing.app.ticket.dto.EventDto;
 import com.eve.ticketing.app.ticket.dto.NotificationDto;
 import com.eve.ticketing.app.ticket.dto.SeatDto;
 import com.eve.ticketing.app.ticket.dto.TicketFilterDto;
+import com.eve.ticketing.app.ticket.exception.Error;
+import com.eve.ticketing.app.ticket.exception.TicketProcessingException;
 import com.eve.ticketing.app.ticket.kafka.KafkaNotificationProducer;
+import jakarta.validation.ConstraintViolationException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,14 +56,15 @@ public class TicketServiceImpl implements TicketService {
     @Override
     public Ticket getTicketById(long id) throws TicketProcessingException {
         return ticketRepository.findById(id).orElseThrow(() -> {
-            log.error("Ticket (id=\"{}\") was not found", id);
-            return new TicketProcessingException("Ticket was not found - invalid ticket id");
+            Error error = Error.builder().method("GET").field("id").value(id).description("id not found").build();
+            log.error(error.toString());
+            return new TicketProcessingException(HttpStatus.NOT_FOUND, error);
         });
     }
 
     @Override
     @Transactional
-    public void createTicket(Ticket ticket) throws TicketProcessingException {
+    public void createTicket(Ticket ticket) throws TicketProcessingException, ConstraintViolationException {
         try {
             EventDto eventDto = getEvent(ticket.getEventId());
             ticket.setCode(UUID.randomUUID().toString());
@@ -85,38 +89,47 @@ public class TicketServiceImpl implements TicketService {
                     " a ticket with code \"" + ticket.getCode() + "\" for " + eventDto.getName() + ".\nSee yoo soon,\nEve ticketing system";
             publishNotification(ticket, message);
 
-            log.info("Ticket (code=\"{}\", eventId={}) was created/updated", ticket.getCode(), ticket.getEventId());
+            log.info("Ticket (code=\"{}\", eventId={}) was created", ticket.getCode(), ticket.getEventId());
         } catch (RuntimeException e) {
-            throw new TicketProcessingException("Ticket was not created/updated - " + e.getMessage());
+            Error error = Error.builder().method("POST").field("").value(ticket).description("invalid parameters").build();
+            log.error(error.toString());
+            throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
         }
     }
 
     @Override
-    @Transactional(isolation = Isolation.SERIALIZABLE)
-    public Ticket updateTicket(HashMap<String, Object> values) throws TicketProcessingException {
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    public Ticket updateTicket(HashMap<String, Object> values) throws TicketProcessingException, ConstraintViolationException {
+        Error error = Error.builder().method("PUT").build();
         if (values == null) {
-            log.error("Ticket was not updated - empty values");
-            throw new TicketProcessingException("Ticket was not updated - empty values");
+            error.setField("");
+            error.setValue("");
+            error.setDescription("empty values");
+            log.error(error.toString());
+            throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
         }
-
         if (values.get("id") == null || !(values.get("id") instanceof Number)) {
-            log.error("Ticket id should not be null and should be a number");
-            throw new TicketProcessingException("Ticket id should not be null");
+            error.setField("id");
+            error.setValue(Objects.toString(values.get("id"), ""));
+            error.setDescription("can not be null or has different type than Number");
+            log.error(error.toString());
+            throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
         }
-        Ticket ticket = getTicketById(((Number) values.remove("id")).longValue());
 
+        Ticket ticket = getTicketById(((Number) values.remove("id")).longValue());
         Stream.of("code", "createdAt", "cost", "eventId").forEach(values::remove);
-        Set<String> updatedFields = new HashSet<>();
         EventDto eventDto = getEvent(ticket.getId());
+        Set<String> updatedFields = new HashSet<>();
         values.forEach((key, value) -> {
             String convertedKey = toCamelCase(key);
             try {
                 Field field = ticket.getClass().getDeclaredField(convertedKey);
                 field.setAccessible(true);
-                boolean isUpdated = false;
-                if ((value instanceof String && !StringUtils.isBlank((String) value)) || (value instanceof Boolean)) {
+                error.setField(key);
+                error.setValue(value);
+                if (value instanceof String || value instanceof Boolean) {
                     field.set(ticket, value);
-                    isUpdated = true;
+                    updatedFields.add(convertedKey);
                 }
                 if (value instanceof Number && "seatId".equals(convertedKey) && !eventDto.isWithoutSeats()) {
                     HashMap<String, Object> seatValues = new HashMap<>(3);
@@ -130,18 +143,17 @@ public class TicketServiceImpl implements TicketService {
                     seatValues.put("occupied", true);
                     SeatDto seatDto = updateSeat(seatValues);
                     field.set(ticket, seatDto.getId());
-                    isUpdated = true;
-                }
-                if (isUpdated) {
                     updatedFields.add(convertedKey);
-                    log.info("Ticket (id=\"{}\") field \"{}\" was updated to \"{}\"", ticket.getId(), convertedKey, Objects.toString(value, ""));
                 }
             } catch (NullPointerException e) {
-                log.error("Ticket (id=\"{}\") was not updated - field can not be null", ticket.getId());
+                error.setDescription("field can not be null");
+                log.error(error.toString());
             } catch (NoSuchFieldException e) {
-                log.error("Ticket (id=\"{}\") was not updated - field \"{}\" does not exist", ticket.getId(), convertedKey);
+                error.setDescription("field does not exists");
+                log.error(error.toString());
             } catch (IllegalAccessException e) {
-                log.error("Ticket (id=\"{}\") was not updated - illegal access to field \"{}\"", ticket.getId(), convertedKey);
+                error.setDescription("illegal access to field");
+                log.error(error.toString());
             }
         });
 
@@ -157,11 +169,13 @@ public class TicketServiceImpl implements TicketService {
             publishNotification(ticket, message);
         }
 
+        ticketRepository.flush();
+
         return ticket;
     }
 
     @Override
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void deleteTicketById(long id) throws TicketProcessingException {
         try {
             Ticket ticket = getTicketById(id);
@@ -179,8 +193,9 @@ public class TicketServiceImpl implements TicketService {
             ticketRepository.deleteById(id);
             log.info("Ticket (id=\"{}\") was deleted", id);
         } catch (RuntimeException e) {
-            log.error("Ticket (id=\"{}\") was not deleted", id);
-            throw new TicketProcessingException("Ticket was not deleted - " + e.getMessage());
+            Error error = Error.builder().method("DELETE").field("id").value(id).description("id not found").build();
+            log.error(error.toString());
+            throw new TicketProcessingException(HttpStatus.NOT_FOUND, error);
         }
     }
 
@@ -195,8 +210,9 @@ public class TicketServiceImpl implements TicketService {
             return eventDto.getUnitPrice();
         }
 
-        log.error("Unable to calculate Ticket cost for Event (id=\"{}\")", eventDto.getId());
-        throw new TicketProcessingException("Unknown discounts configuration");
+        Error error = Error.builder().method("").field("cost").value("").description("unknown discounts configuration").build();
+        log.error(error.toString());
+        throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
     }
 
     private void publishNotification(Ticket ticket, String message) {
@@ -210,6 +226,7 @@ public class TicketServiceImpl implements TicketService {
 
     private EventDto getEvent(long eventId) throws TicketProcessingException {
         EventDto eventDto;
+        Error error = Error.builder().method("").field("event_id").value(eventId).build();
         try {
             eventDto = restTemplate.getForObject(
                     "http://EVENT/api/v1/event/id/{id}",
@@ -217,21 +234,25 @@ public class TicketServiceImpl implements TicketService {
                     eventId
             );
         } catch (RestClientException e) {
-            log.error("Unable to communicate with event server - {}", e.getMessage());
-            throw new TicketProcessingException("Unable to communicate with event server");
+            error.setDescription("unable to communicate with event server");
+            log.error(error.toString());
+            throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
         }
 
         if (eventDto == null) {
-            log.error("Ticket for Event (id=\"{}\") was not created - event not found", eventId);
-            throw new TicketProcessingException("Event not found");
+            error.setDescription("id not found");
+            log.error(error.toString());
+            throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
         }
         if (new Date(System.currentTimeMillis()).after(eventDto.getStartAt())) {
-            log.error("Ticket for Event (id=\"{}\") was not created - event has started", eventId);
-            throw new TicketProcessingException("Event has started");
+            error.setDescription("event has started");
+            log.error(error.toString());
+            throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
         }
         if (eventDto.isSoldOut()) {
-            log.error("Ticket for Event (id=\"{}\") was not created - tickets sold out", eventId);
-            throw new TicketProcessingException("Tickets sold out");
+            error.setDescription("tickets sold out");
+            log.error(error.toString());
+            throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
         }
 
         return eventDto;
@@ -239,9 +260,11 @@ public class TicketServiceImpl implements TicketService {
 
     private SeatDto updateSeat(HashMap<String, Object> values) throws TicketProcessingException {
         Long eventId = values.get("event_id") != null ? ((Number) values.get("event_id")).longValue() : null;
+        Error error = Error.builder().method("").field("event_id").value(eventId).build();
         if (eventId == null) {
-            log.error("Ticket was not created - eventId can not be null");
-            throw new TicketProcessingException("Ticket was not created - eventId can not be null");
+            error.setDescription("should not be null");
+            log.error(error.toString());
+            throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
         }
 
         try {
@@ -252,8 +275,9 @@ public class TicketServiceImpl implements TicketService {
                     SeatDto.class
             ).getBody();
         } catch (RestClientException e) {
-            log.error("Ticket (eventId={}) was not created - {}", eventId, e.getMessage());
-            throw new TicketProcessingException("Unable to communicate with seat server");
+            error.setDescription("unable to communicate with seat server");
+            log.error(error.toString());
+            throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
         }
     }
 
