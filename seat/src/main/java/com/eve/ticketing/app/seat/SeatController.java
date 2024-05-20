@@ -8,7 +8,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
 
@@ -30,41 +29,25 @@ public class SeatController {
 
     @GetMapping("/id/{id}")
     public ResponseEntity<Seat> getSeatById(@PathVariable long id) {
-        try {
-            Seat seat = seatService.getSeatById(id);
-            return new ResponseEntity<>(seat, HttpStatus.OK);
-        } catch (SeatProcessingException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
-        }
+        Seat seat = seatService.getSeatById(id);
+        return new ResponseEntity<>(seat, HttpStatus.OK);
     }
 
     @PostMapping("/create")
     public ResponseEntity<?> createEvent(@Valid @RequestBody Seat seat) {
-        try {
-            seatService.createSeat(seat);
-            return new ResponseEntity<>(HttpStatus.CREATED);
-        } catch (SeatProcessingException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
-        }
+        seatService.createSeat(seat);
+        return new ResponseEntity<>(HttpStatus.CREATED);
     }
 
     @PutMapping("/update")
     public ResponseEntity<Seat> updateSeat(HashMap<String, Object> values) {
-        try {
-            Seat seat = seatService.updateSeat(values);
-            return new ResponseEntity<>(seat, HttpStatus.OK);
-        } catch (SeatProcessingException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
-        }
+        Seat seat = seatService.updateSeat(values);
+        return new ResponseEntity<>(seat, HttpStatus.OK);
     }
 
     @DeleteMapping("/id/{id}")
     public ResponseEntity<?> deleteSeatById(@PathVariable long id) {
-        try {
-            seatService.deleteSeatById(id);
-            return new ResponseEntity<>(HttpStatus.OK);
-        } catch (SeatProcessingException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
-        }
+        seatService.deleteSeatById(id);
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 }

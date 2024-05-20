@@ -1,6 +1,9 @@
 package com.eve.ticketing.app.seat;
 
 import com.eve.ticketing.app.seat.dto.SeatFilterDto;
+import com.eve.ticketing.app.seat.exception.Error;
+import com.eve.ticketing.app.seat.exception.SeatProcessingException;
+import jakarta.validation.ConstraintViolationException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -9,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +21,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
+import java.util.Objects;
 
 import static com.eve.ticketing.app.seat.SeatSpecification.*;
 
@@ -42,31 +47,36 @@ public class SeatServiceImpl implements SeatService {
     @Override
     public Seat getSeatById(long id) throws SeatProcessingException {
         return seatRepository.findById(id).orElseThrow(() -> {
-            log.error("Seat (id=\"{}\") was not found", id);
-            return new SeatProcessingException("Seat was not found - invalid seat id");
+            Error error = Error.builder().method("GET").field("id").value(id).description("id not found").build();
+            log.error(error.toString());
+            return new SeatProcessingException(HttpStatus.NOT_FOUND, error);
         });
     }
 
     @Override
     @Transactional
-    public void createSeat(Seat seat) throws SeatProcessingException {
+    public void createSeat(Seat seat) throws SeatProcessingException, ConstraintViolationException {
         try {
             seatRepository.save(seat);
-            log.info("Seat (seatId=\"{}\", eventId=\"{}\") was created/updated", seat.getId(), seat.getEventId());
+            log.info("Seat (seatId=\"{}\", eventId=\"{}\") was created", seat.getId(), seat.getEventId());
         } catch (RuntimeException e) {
-            log.error("Seat (seatId=\"{}\", eventId=\"{}\") was not created/updated", seat.getId(), seat.getEventId());
-            throw new SeatProcessingException("Seat was not created/updated - " + e.getMessage());
+            Error error = Error.builder().method("POST").field("").value(seat).description("invalid parameters").build();
+            log.error(error.toString());
+            throw new SeatProcessingException(HttpStatus.BAD_REQUEST, error);
         }
     }
 
     @Override
-    @Transactional(isolation = Isolation.SERIALIZABLE)
-    public Seat updateSeat(HashMap<String, Object> values) throws SeatProcessingException {
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    public Seat updateSeat(HashMap<String, Object> values) throws SeatProcessingException, ConstraintViolationException {
+        Error error = Error.builder().method("PUT").build();
         if (values == null) {
-            log.error("Seat was not updated - empty values");
-            throw new SeatProcessingException("Seat was not updated - empty values");
+            error.setField("");
+            error.setValue("");
+            error.setDescription("empty values");
+            log.error(error.toString());
+            throw new SeatProcessingException(HttpStatus.BAD_REQUEST, error);
         }
-
         if (values.get("reserve") instanceof Boolean && Boolean.TRUE.equals(values.get("reserve"))
                 && values.get("event_id") instanceof Number && values.get("event_id") != null
                 && values.get("max_ticket_amount") instanceof Number && values.get("max_ticket_amount") != null) {
@@ -74,29 +84,38 @@ public class SeatServiceImpl implements SeatService {
             long maxTicketAmount = ((Number) values.get("max_ticket_amount")).longValue();
             long currentTicketAmount = seatRepository.countByEventIdAndOccupiedTrue(eventId);
             Seat seat = seatRepository.findFirstByEventIdAndOccupiedIsFalse(eventId).orElseThrow(() -> {
-                log.error("Available Seat for Event (id=\"{}\") was not found", eventId);
-                return new SeatProcessingException("Seat was not found - invalid event id");
+                error.setField("");
+                error.setValue(values);
+                error.setDescription("available seat not found");
+                log.error(error.toString());
+                return new SeatProcessingException(HttpStatus.BAD_REQUEST, error);
             });
             if (maxTicketAmount == (currentTicketAmount + 1L)) {
                 updateEvent(eventId, true);
             }
             return seat;
         }
-
         if (values.get("id") == null || !(values.get("id") instanceof Number)) {
-            log.error("Seat id should not be null and should be a number");
-            throw new SeatProcessingException("Seat id should not be null");
+            error.setField("id");
+            error.setValue(Objects.toString(values.get("id"), ""));
+            error.setDescription("can not be null or has different type than Number");
+            log.error(error.toString());
+            throw new SeatProcessingException(HttpStatus.BAD_REQUEST, error);
         }
-        Seat seat = getSeatById(((Number) values.remove("id")).longValue());
 
+        Seat seat = getSeatById(((Number) values.remove("id")).longValue());
         values.remove("event_id");
         values.forEach((key, value) -> {
             String convertedKey = toCamelCase(key);
             try {
                 Field field = seat.getClass().getDeclaredField(convertedKey);
                 field.setAccessible(true);
-                boolean isUpdated = ((value instanceof Integer && 0 <= ((Integer) value)));
-                if ((value instanceof Boolean)) {
+                error.setField(key);
+                error.setValue(value);
+                if (value instanceof Integer) {
+                    field.set(seat, value);
+                }
+                if (value instanceof Boolean) {
                     if (Boolean.TRUE.equals(value) && Boolean.FALSE.equals(seat.getOccupied())
                             && (values.get("max_ticket_amount") instanceof Number) && values.get("max_ticket_amount") != null) {
                         long maxTicketAmount = ((Number) values.get("max_ticket_amount")).longValue();
@@ -104,26 +123,24 @@ public class SeatServiceImpl implements SeatService {
                         if (maxTicketAmount == (currentTicketAmount + 1L)) {
                             updateEvent(seat.getEventId(), true);
                         }
-                        isUpdated = true;
                     }
                     if (Boolean.FALSE.equals(value) && Boolean.TRUE.equals(seat.getOccupied())
                             && values.get("is_sold_out") instanceof Boolean && values.get("is_sold_out") != null) {
                         if (Boolean.TRUE.equals(values.get("is_sold_out"))) {
                             updateEvent(seat.getEventId(), false);
                         }
-                        isUpdated = true;
                     }
-                }
-                if (isUpdated) {
                     field.set(seat, value);
-                    log.info("Seat (id=\"{}\") field \"{}\" was updated to \"{}\"", seat.getId(), convertedKey, value);
                 }
             } catch (NullPointerException e) {
-                log.error("Seat (id=\"{}\") was not updated - field can not be null", seat.getId());
+                error.setDescription("field can not be null");
+                log.error(error.toString());
             } catch (NoSuchFieldException e) {
-                log.error("Seat (id=\"{}\") was not updated - field \"{}\" does not exist", seat.getId(), convertedKey);
+                error.setDescription("field does not exists");
+                log.error(error.toString());
             } catch (IllegalAccessException e) {
-                log.error("Seat (id=\"{}\") was not updated - illegal access to field \"{}\"", seat.getId(), convertedKey);
+                error.setDescription("illegal access to field");
+                log.error(error.toString());
             }
         });
 
@@ -131,14 +148,15 @@ public class SeatServiceImpl implements SeatService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void deleteSeatById(long id) throws SeatProcessingException {
         try {
             seatRepository.deleteById(id);
             log.info("Seat (id=\"{}\") was deleted", id);
         } catch (RuntimeException e) {
-            log.error("Seat (id=\"{}\") was not deleted", id);
-            throw new SeatProcessingException("Seat was not deleted - invalid seat id");
+            Error error = Error.builder().method("DELETE").field("id").value(id).description("id not found").build();
+            log.error(error.toString());
+            throw new SeatProcessingException(HttpStatus.NOT_FOUND, error);
         }
     }
 
@@ -154,8 +172,9 @@ public class SeatServiceImpl implements SeatService {
                     void.class
             );
         } catch (RestClientException e) {
-            log.error("Unable to communicate with event server - {}", e.getMessage());
-            throw new SeatProcessingException("Unable to communicate with event server");
+            Error error = Error.builder().method("").field("event_id").value(eventId).description("unable to communicate with seat server").build();
+            log.error(error.toString());
+            throw new SeatProcessingException(HttpStatus.BAD_REQUEST, error);
         }
     }
 
