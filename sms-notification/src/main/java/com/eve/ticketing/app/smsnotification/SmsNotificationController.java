@@ -7,7 +7,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 @Tag(name = "Sms notification", description = "Sms notification management APIs")
 @RequestMapping("/api/v1/sms-notification")
@@ -27,21 +26,14 @@ public class SmsNotificationController {
 
     @GetMapping("/id/{id}")
     public ResponseEntity<SmsNotification> getSmsNotificationById(@PathVariable long id) {
-        try {
-            SmsNotification smsNotification = smsNotificationService.getSmsNotificationById(id);
-            return new ResponseEntity<>(smsNotification, HttpStatus.OK);
-        } catch (SmsNotificationProcessingException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
-        }
+        SmsNotification smsNotification = smsNotificationService.getSmsNotificationById(id);
+        return new ResponseEntity<>(smsNotification, HttpStatus.OK);
     }
 
     @DeleteMapping("/id/{id}")
     public ResponseEntity<?> deleteSmsNotificationById(@PathVariable long id) {
-        try {
-            smsNotificationService.deleteSmsNotificationById(id);
-            return new ResponseEntity<>(HttpStatus.OK);
-        } catch (SmsNotificationProcessingException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
-        }
+        smsNotificationService.deleteSmsNotificationById(id);
+        return new ResponseEntity<>(HttpStatus.OK);
+
     }
 }

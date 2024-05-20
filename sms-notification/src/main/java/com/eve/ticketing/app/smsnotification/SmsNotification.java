@@ -19,18 +19,15 @@ public class SmsNotification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
     @JsonProperty("phone_number")
-    @NotBlank(message = "Field \"phone_number\" should not be blank")
+    @NotBlank(message = "should not be blank")
     private String phoneNumber;
 
-    @Column(nullable = false)
-    @NotBlank(message = "Field \"message\" should not be blank")
+    @NotBlank(message = "should not be blank")
     private String message;
 
-    @Column(nullable = false)
     @JsonProperty("ticket_id")
-    @NotNull(message = "Field \"ticket_id\" should not be \"null\"")
-    @Min(value = 1, message = "Field \"ticket_id\" should be greater than \"0\"")
+    @NotNull(message = "should not be null")
+    @Min(value = 1, message = "should be greater than 0")
     private Long ticketId;
 }

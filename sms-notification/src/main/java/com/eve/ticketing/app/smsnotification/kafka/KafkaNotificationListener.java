@@ -1,7 +1,7 @@
 package com.eve.ticketing.app.smsnotification.kafka;
 
 import com.eve.ticketing.app.smsnotification.SmsNotification;
-import com.eve.ticketing.app.smsnotification.SmsNotificationProcessingException;
+import com.eve.ticketing.app.smsnotification.exception.SmsNotificationProcessingException;
 import com.eve.ticketing.app.smsnotification.SmsNotificationServiceImpl;
 import com.eve.ticketing.app.smsnotification.SmsSender;
 import com.eve.ticketing.app.smsnotification.dto.NotificationDto;
