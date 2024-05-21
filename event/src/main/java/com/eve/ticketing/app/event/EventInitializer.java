@@ -28,7 +28,7 @@ public class EventInitializer implements CommandLineRunner {
     public void run(String... args) {
         log.info("Application has started generating \"Event\" data");
         List<Event> eventList = new ArrayList<>();
-        eventList.add(createEvent(new Date(System.currentTimeMillis() + DAY * 50), 1L, false));
+        eventList.add(createEvent(new Date(System.currentTimeMillis() + DAY * 50), 1000L, false));
         for (int i = 0; i < 99; i++) {
             eventList.add(createEvent(null, null, true));
         }

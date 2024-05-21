@@ -34,6 +34,5 @@ public class SmsNotificationController {
     public ResponseEntity<?> deleteSmsNotificationById(@PathVariable long id) {
         smsNotificationService.deleteSmsNotificationById(id);
         return new ResponseEntity<>(HttpStatus.OK);
-
     }
 }
