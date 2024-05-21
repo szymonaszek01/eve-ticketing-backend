@@ -74,11 +74,11 @@ public class TicketServiceImpl implements TicketService {
                 ticket.setIsStudent(false);
             }
             ticket.setCost(getTicketCost(eventDto, ticket.getIsAdult(), ticket.getIsStudent()));
+            ticket.setPaid(false);
 
             if (!eventDto.isWithoutSeats()) {
                 HashMap<String, Object> seatValues = new HashMap<>(3);
                 seatValues.put("event_id", ticket.getEventId());
-                seatValues.put("max_ticket_amount", eventDto.getMaxTicketAmount());
                 seatValues.put("reserve", true);
                 SeatDto seatDto = updateSeat(seatValues);
                 ticket.setSeatId(seatDto.getId());
@@ -191,12 +191,20 @@ public class TicketServiceImpl implements TicketService {
             }
 
             ticketRepository.deleteById(id);
+            String message = "Hi " + ticket.getFirstname() + ".\nYour ticket with code \"" + ticket.getCode()
+                    + "\" for " + eventDto.getName() + " was canceled. Please, see the details on our page. \nSee yoo soon,\nEve ticketing system";
+            publishNotification(ticket, message);
+
             log.info("Ticket (id=\"{}\") was deleted", id);
         } catch (RuntimeException e) {
             Error error = Error.builder().method("DELETE").field("id").value(id).description("id not found").build();
             log.error(error.toString());
             throw new TicketProcessingException(HttpStatus.NOT_FOUND, error);
         }
+    }
+
+    public List<Ticket> getTicketListByPaidIsFalseAndCreatedAt(Date createdAt) {
+        return ticketRepository.findAllByPaidIsFalseAndCreatedAt(createdAt);
     }
 
     private BigDecimal getTicketCost(EventDto eventDto, boolean isAdult, boolean isStudent) throws TicketProcessingException {

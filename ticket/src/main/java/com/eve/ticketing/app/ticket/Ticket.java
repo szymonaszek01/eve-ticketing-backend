@@ -31,7 +31,6 @@ public class Ticket {
 
     @JsonProperty("created_at")
     @NotNull(message = "should not be null")
-    @FutureOrPresent(message = "should be present or future date")
     private Date createdAt;
 
     @NotBlank(message = "should not be blank")
@@ -65,4 +64,7 @@ public class Ticket {
     @NotNull(message = "should not be null")
     @Min(value = 1, message = "should be greater than 0")
     private Long seatId;
+
+    @NotNull(message = "should not be null")
+    private Boolean paid;
 }

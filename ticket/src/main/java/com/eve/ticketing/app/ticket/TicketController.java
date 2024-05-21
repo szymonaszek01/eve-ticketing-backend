@@ -34,7 +34,7 @@ public class TicketController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<?> createTicket(@Valid @RequestBody Ticket ticket) {
+    public ResponseEntity<?> createTicket(@RequestBody Ticket ticket) {
         ticketService.createTicket(ticket);
         return new ResponseEntity<>(HttpStatus.CREATED);
     }
