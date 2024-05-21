@@ -34,13 +34,13 @@ public class SeatController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<?> createEvent(@Valid @RequestBody Seat seat) {
+    public ResponseEntity<?> createSeat(@Valid @RequestBody Seat seat) {
         seatService.createSeat(seat);
         return new ResponseEntity<>(HttpStatus.CREATED);
     }
 
     @PutMapping("/update")
-    public ResponseEntity<Seat> updateSeat(HashMap<String, Object> values) {
+    public ResponseEntity<Seat> updateSeat(@RequestBody HashMap<String, Object> values) {
         Seat seat = seatService.updateSeat(values);
         return new ResponseEntity<>(seat, HttpStatus.OK);
     }

@@ -11,5 +11,7 @@ public interface SeatRepository extends JpaRepository<Seat, Long>, JpaSpecificat
 
     Optional<Seat> findFirstByEventIdAndOccupiedIsFalse(Long eventId);
 
+    long countByEventId(Long eventId);
+
     long countByEventIdAndOccupiedTrue(Long eventId);
 }

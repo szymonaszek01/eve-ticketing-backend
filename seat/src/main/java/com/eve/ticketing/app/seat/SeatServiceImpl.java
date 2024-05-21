@@ -77,11 +77,9 @@ public class SeatServiceImpl implements SeatService {
             log.error(error.toString());
             throw new SeatProcessingException(HttpStatus.BAD_REQUEST, error);
         }
-        if (values.get("reserve") instanceof Boolean && Boolean.TRUE.equals(values.get("reserve"))
-                && values.get("event_id") instanceof Number && values.get("event_id") != null
-                && values.get("max_ticket_amount") instanceof Number && values.get("max_ticket_amount") != null) {
+        if (values.get("reserve") instanceof Boolean && Boolean.TRUE.equals(values.get("reserve")) && values.get("event_id") instanceof Number && values.get("event_id") != null) {
             long eventId = ((Number) values.get("event_id")).longValue();
-            long maxTicketAmount = ((Number) values.get("max_ticket_amount")).longValue();
+            long maxTicketAmount = seatRepository.countByEventId(eventId);
             long currentTicketAmount = seatRepository.countByEventIdAndOccupiedTrue(eventId);
             Seat seat = seatRepository.findFirstByEventIdAndOccupiedIsFalse(eventId).orElseThrow(() -> {
                 error.setField("");
@@ -91,8 +89,12 @@ public class SeatServiceImpl implements SeatService {
                 return new SeatProcessingException(HttpStatus.BAD_REQUEST, error);
             });
             if (maxTicketAmount == (currentTicketAmount + 1L)) {
-                updateEvent(eventId, true);
+                HashMap<String, Object> eventValues = new HashMap<>(2);
+                eventValues.put("id", seat.getEventId());
+                eventValues.put("is_sold_out", true);
+                updateEvent(eventValues);
             }
+            seat.setOccupied(true);
             return seat;
         }
         if (values.get("id") == null || !(values.get("id") instanceof Number)) {
@@ -121,13 +123,19 @@ public class SeatServiceImpl implements SeatService {
                         long maxTicketAmount = ((Number) values.get("max_ticket_amount")).longValue();
                         long currentTicketAmount = seatRepository.countByEventIdAndOccupiedTrue(seat.getEventId());
                         if (maxTicketAmount == (currentTicketAmount + 1L)) {
-                            updateEvent(seat.getEventId(), true);
+                            HashMap<String, Object> eventValues = new HashMap<>(2);
+                            eventValues.put("id", seat.getEventId());
+                            eventValues.put("is_sold_out", true);
+                            updateEvent(eventValues);
                         }
                     }
                     if (Boolean.FALSE.equals(value) && Boolean.TRUE.equals(seat.getOccupied())
                             && values.get("is_sold_out") instanceof Boolean && values.get("is_sold_out") != null) {
                         if (Boolean.TRUE.equals(values.get("is_sold_out"))) {
-                            updateEvent(seat.getEventId(), false);
+                            HashMap<String, Object> eventValues = new HashMap<>(2);
+                            eventValues.put("id", seat.getEventId());
+                            eventValues.put("is_sold_out", false);
+                            updateEvent(eventValues);
                         }
                     }
                     field.set(seat, value);
@@ -151,7 +159,20 @@ public class SeatServiceImpl implements SeatService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public void deleteSeatById(long id) throws SeatProcessingException {
         try {
+            Seat seat = getSeatById(id);
+            if (seat.getOccupied()) {
+                Error error = Error.builder().method("DELETE").field("id").value(id).description("seat is occupied").build();
+                log.error(error.toString());
+                throw new SeatProcessingException(HttpStatus.BAD_REQUEST, error);
+            }
             seatRepository.deleteById(id);
+            long maxTicketAmount = seatRepository.countByEventId(id);
+            if (maxTicketAmount > 0) {
+                HashMap<String, Object> eventValues = new HashMap<>(2);
+                eventValues.put("id", seat.getEventId());
+                eventValues.put("max_ticket_amount", maxTicketAmount);
+                updateEvent(eventValues);
+            }
             log.info("Seat (id=\"{}\") was deleted", id);
         } catch (RuntimeException e) {
             Error error = Error.builder().method("DELETE").field("id").value(id).description("id not found").build();
@@ -160,11 +181,8 @@ public class SeatServiceImpl implements SeatService {
         }
     }
 
-    private void updateEvent(Long eventId, boolean isSoldOut) {
+    private void updateEvent(HashMap<String, Object> values) {
         try {
-            HashMap<String, Object> values = new HashMap<>(2);
-            values.put("id", eventId);
-            values.put("is_sold_out", isSoldOut);
             restTemplate.exchange(
                     "http://EVENT/api/v1/event/update",
                     HttpMethod.PUT,
@@ -172,7 +190,7 @@ public class SeatServiceImpl implements SeatService {
                     void.class
             );
         } catch (RestClientException e) {
-            Error error = Error.builder().method("").field("event_id").value(eventId).description("unable to communicate with seat server").build();
+            Error error = Error.builder().method("").field("").value(values).description("unable to communicate with seat server").build();
             log.error(error.toString());
             throw new SeatProcessingException(HttpStatus.BAD_REQUEST, error);
         }
