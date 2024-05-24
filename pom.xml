@@ -15,6 +15,7 @@
         <module>seat</module>
         <module>sms-notification</module>
         <module>cloud-gateway</module>
+        <module>auth-user</module>
     </modules>
 
 	<name>microservices</name>
