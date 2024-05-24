@@ -20,15 +20,15 @@ public class EventController {
     private final EventServiceImpl eventService;
 
     @GetMapping("/all")
-    public ResponseEntity<Page<Event>> getEventList(@RequestParam(value = "page") int page,
-                                                    @RequestParam(value = "size") int size,
-                                                    EventFilterDto eventFilterDto) {
+    public ResponseEntity<?> getEventList(@RequestParam(value = "page") int page,
+                                          @RequestParam(value = "size") int size,
+                                          EventFilterDto eventFilterDto) {
         Page<Event> eventPage = eventService.getEventList(page, size, eventFilterDto);
         return new ResponseEntity<>(eventPage, HttpStatus.OK);
     }
 
     @GetMapping("/id/{id}")
-    public ResponseEntity<Event> getEventById(@PathVariable long id) {
+    public ResponseEntity<?> getEventById(@PathVariable long id) {
         Event event = eventService.getEventById(id);
         return new ResponseEntity<>(event, HttpStatus.OK);
     }
@@ -36,11 +36,11 @@ public class EventController {
     @PostMapping("/create")
     public ResponseEntity<?> createEvent(@Valid @RequestBody Event event) {
         eventService.createEvent(event);
-        return new ResponseEntity<>(HttpStatus.CREATED);
+        return new ResponseEntity<>(event, HttpStatus.CREATED);
     }
 
     @PutMapping("/update")
-    public ResponseEntity<Event> updateEvent(@RequestBody HashMap<String, Object> values) {
+    public ResponseEntity<?> updateEvent(@RequestBody HashMap<String, Object> values) {
         Event event = eventService.updateEvent(values);
         return new ResponseEntity<>(event, HttpStatus.OK);
     }
