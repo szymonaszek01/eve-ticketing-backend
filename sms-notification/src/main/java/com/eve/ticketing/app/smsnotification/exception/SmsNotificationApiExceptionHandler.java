@@ -13,7 +13,7 @@ import java.util.List;
 
 @ControllerAdvice
 @Slf4j
-public class EventApiExceptionHandler {
+public class SmsNotificationApiExceptionHandler {
 
     @ExceptionHandler({ConstraintViolationException.class})
     public ResponseEntity<Object> handleConstraintViolationException(ConstraintViolationException e, HttpServletRequest httpServletRequest) {
@@ -27,26 +27,26 @@ public class EventApiExceptionHandler {
 
         errors.forEach(error -> log.error(error.toString()));
 
-        EventApiException eventApiException = EventApiException.builder()
+        SmsNotificationApiException smsNotificationApiException = SmsNotificationApiException.builder()
                 .status(HttpStatus.BAD_REQUEST.value())
                 .message("entity sms-notification can not be " + ("PUT".equalsIgnoreCase(httpServletRequest.getMethod()) ? "updated" : "created") + " due to constraint violation")
                 .errors(errors)
                 .build();
 
-        return new ResponseEntity<>(eventApiException, new HttpHeaders(), eventApiException.getStatus());
+        return new ResponseEntity<>(smsNotificationApiException, new HttpHeaders(), smsNotificationApiException.getStatus());
     }
 
     @ExceptionHandler({SmsNotificationProcessingException.class})
     public ResponseEntity<Object> handleEventProcessingException(SmsNotificationProcessingException e) {
         List<Error> errors = List.of(e.getError());
 
-        EventApiException eventApiException = EventApiException.builder()
+        SmsNotificationApiException smsNotificationApiException = SmsNotificationApiException.builder()
                 .status(e.getStatus().value())
                 .message("entity sms-notification can not be processed, because an error occurred")
                 .errors(errors)
                 .build();
 
-        return new ResponseEntity<>(eventApiException, new HttpHeaders(), eventApiException.getStatus());
+        return new ResponseEntity<>(smsNotificationApiException, new HttpHeaders(), smsNotificationApiException.getStatus());
     }
 
     private String toSnake(String str) {

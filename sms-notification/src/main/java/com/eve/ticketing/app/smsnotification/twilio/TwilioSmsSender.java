@@ -2,6 +2,8 @@ package com.eve.ticketing.app.smsnotification.twilio;
 
 import com.eve.ticketing.app.smsnotification.SmsNotification;
 import com.eve.ticketing.app.smsnotification.SmsSender;
+import com.eve.ticketing.app.smsnotification.exception.Error;
+import com.eve.ticketing.app.smsnotification.exception.SmsNotificationProcessingException;
 import com.google.i18n.phonenumbers.NumberParseException;
 import com.google.i18n.phonenumbers.PhoneNumberUtil;
 import com.google.i18n.phonenumbers.Phonenumber;
@@ -10,6 +12,7 @@ import com.twilio.rest.api.v2010.account.MessageCreator;
 import com.twilio.type.PhoneNumber;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -22,8 +25,8 @@ public class TwilioSmsSender implements SmsSender {
     @Override
     public void sendSms(SmsNotification smsNotification) throws IllegalArgumentException {
         if (!isPhoneNumberValid(smsNotification.getPhoneNumber())) {
-            log.error("Invalid phone number - {}", smsNotification.getPhoneNumber());
-            throw new IllegalArgumentException("Phone number (" + smsNotification.getPhoneNumber() + ") not valid");
+            Error error = Error.builder().method("POST").field("phone_number").value(smsNotification.getPhoneNumber()).description("phone number is invalid").build();
+            throw new SmsNotificationProcessingException(HttpStatus.BAD_REQUEST, error);
         }
 
         PhoneNumber to = new PhoneNumber(smsNotification.getPhoneNumber());

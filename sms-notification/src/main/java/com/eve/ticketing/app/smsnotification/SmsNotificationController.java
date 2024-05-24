@@ -17,7 +17,7 @@ public class SmsNotificationController {
     private final SmsNotificationServiceImpl smsNotificationService;
 
     @GetMapping("/all")
-    public ResponseEntity<Page<SmsNotification>> getSmsNotificationList(@RequestParam(value = "page") int page,
+    public ResponseEntity<?> getSmsNotificationList(@RequestParam(value = "page") int page,
                                                                         @RequestParam(value = "size") int size,
                                                                         SmsNotificationFilterDto smsNotificationFilterDto) {
         Page<SmsNotification> smsNotificationPage = smsNotificationService.getSmsNotificationList(page, size, smsNotificationFilterDto);
@@ -25,7 +25,7 @@ public class SmsNotificationController {
     }
 
     @GetMapping("/id/{id}")
-    public ResponseEntity<SmsNotification> getSmsNotificationById(@PathVariable long id) {
+    public ResponseEntity<?> getSmsNotificationById(@PathVariable long id) {
         SmsNotification smsNotification = smsNotificationService.getSmsNotificationById(id);
         return new ResponseEntity<>(smsNotification, HttpStatus.OK);
     }
