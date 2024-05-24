@@ -2,32 +2,44 @@ spring:
     application:
         name: cloud-gateway
     main:
-      web-application-type: reactive
-      allow-bean-definition-overriding: true
+        web-application-type: reactive
+        allow-bean-definition-overriding: true
     cloud:
         gateway:
             routes:
-                - id: event
-                  uri: lb://EVENT
-                  predicates:
-                      - Path=/api/v1/event/**
-                - id: seat
-                  uri: lb://SEAT
-                  predicates:
-                      - Path=/api/v1/seat/**
-                - id: ticket
-                  uri: lb://TICKET
-                  predicates:
-                      - Path=/api/v1/ticket/**
-                - id: sms-notification
-                  uri: lb://SECOND-NOTIFICATION
-                  predicates:
-                      - Path=/api/v1/sms-notification/**
+                -   id: event
+                    uri: lb://EVENT
+                    predicates:
+                        - Path=/api/v1/event/**
+                    filters: AuthenticationFilter
+
+                -   id: seat
+                    uri: lb://SEAT
+                    predicates:
+                        - Path=/api/v1/seat/**
+                    filters: AuthenticationFilter
+
+                -   id: ticket
+                    uri: lb://TICKET
+                    predicates:
+                        - Path=/api/v1/ticket/**
+                    filters: AuthenticationFilter
+
+                -   id: sms-notification
+                    uri: lb://SMS-NOTIFICATION
+                    predicates:
+                        - Path=/api/v1/sms-notification/**
+                    filters: AuthenticationFilter
+
+                -   id: auth-user
+                    uri: lb://AUTH-USER
+                    predicates:
+                        - Path=/api/v1/auth-user/**
 server:
     port: 8080
 eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_SERVER}
-    fetch-registry: true
-    register-with-eureka: true
+    client:
+        service-url:
+            defaultZone: ${EUREKA_SERVER}
+        fetch-registry: true
+        register-with-eureka: true
