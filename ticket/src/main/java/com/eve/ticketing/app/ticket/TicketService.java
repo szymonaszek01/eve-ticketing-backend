@@ -1,5 +1,6 @@
 package com.eve.ticketing.app.ticket;
 
+import com.eve.ticketing.app.ticket.dto.TicketDto;
 import com.eve.ticketing.app.ticket.dto.TicketFilterDto;
 import com.eve.ticketing.app.ticket.exception.TicketProcessingException;
 import jakarta.validation.ConstraintViolationException;
@@ -13,7 +14,7 @@ public interface TicketService {
 
     Ticket getTicketById(long id) throws TicketProcessingException;
 
-    void createTicket(Ticket ticket) throws TicketProcessingException, ConstraintViolationException;
+    Ticket createTicket(TicketDto ticketDto) throws TicketProcessingException, ConstraintViolationException;
 
     Ticket updateTicket(HashMap<String, Object> values) throws TicketProcessingException, ConstraintViolationException;
 

@@ -13,7 +13,7 @@ import java.util.List;
 
 @ControllerAdvice
 @Slf4j
-public class EventApiExceptionHandler {
+public class TicketApiExceptionHandler {
 
     @ExceptionHandler({ConstraintViolationException.class})
     public ResponseEntity<Object> handleConstraintViolationException(ConstraintViolationException e, HttpServletRequest httpServletRequest) {
@@ -27,26 +27,26 @@ public class EventApiExceptionHandler {
 
         errors.forEach(error -> log.error(error.toString()));
 
-        EventApiException eventApiException = EventApiException.builder()
+        TicketApiException ticketApiException = TicketApiException.builder()
                 .status(HttpStatus.BAD_REQUEST.value())
                 .message("entity ticket can not be " + ("PUT".equalsIgnoreCase(httpServletRequest.getMethod()) ? "updated" : "created") + " due to constraint violation")
                 .errors(errors)
                 .build();
 
-        return new ResponseEntity<>(eventApiException, new HttpHeaders(), eventApiException.getStatus());
+        return new ResponseEntity<>(ticketApiException, new HttpHeaders(), ticketApiException.getStatus());
     }
 
     @ExceptionHandler({TicketProcessingException.class})
     public ResponseEntity<Object> handleEventProcessingException(TicketProcessingException e) {
         List<Error> errors = List.of(e.getError());
 
-        EventApiException eventApiException = EventApiException.builder()
+        TicketApiException ticketApiException = TicketApiException.builder()
                 .status(e.getStatus().value())
                 .message("entity ticket can not be processed, because an error occurred")
                 .errors(errors)
                 .build();
 
-        return new ResponseEntity<>(eventApiException, new HttpHeaders(), eventApiException.getStatus());
+        return new ResponseEntity<>(ticketApiException, new HttpHeaders(), ticketApiException.getStatus());
     }
 
     private String toSnake(String str) {

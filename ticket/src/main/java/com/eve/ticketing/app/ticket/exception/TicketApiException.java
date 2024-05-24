@@ -9,7 +9,7 @@ import java.util.List;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class EventApiException {
+public class TicketApiException {
 
     private Integer status;
 

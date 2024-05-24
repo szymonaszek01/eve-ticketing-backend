@@ -1,5 +1,6 @@
 package com.eve.ticketing.app.ticket;
 
+import com.eve.ticketing.app.ticket.dto.TicketDto;
 import com.eve.ticketing.app.ticket.dto.TicketFilterDto;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -20,7 +21,7 @@ public class TicketController {
     private final TicketServiceImpl ticketService;
 
     @GetMapping("/all")
-    public ResponseEntity<Page<Ticket>> getTicketList(@RequestParam(value = "page") int page,
+    public ResponseEntity<?> getTicketList(@RequestParam(value = "page") int page,
                                                       @RequestParam(value = "size") int size,
                                                       TicketFilterDto ticketFilterDto) {
         Page<Ticket> ticketPage = ticketService.getTicketList(page, size, ticketFilterDto);
@@ -28,19 +29,19 @@ public class TicketController {
     }
 
     @GetMapping("/id/{id}")
-    public ResponseEntity<Ticket> getTicketById(@PathVariable long id) {
+    public ResponseEntity<?> getTicketById(@PathVariable long id) {
         Ticket ticket = ticketService.getTicketById(id);
         return new ResponseEntity<>(ticket, HttpStatus.OK);
     }
 
     @PostMapping("/create")
-    public ResponseEntity<?> createTicket(@RequestBody Ticket ticket) {
-        ticketService.createTicket(ticket);
-        return new ResponseEntity<>(HttpStatus.CREATED);
+    public ResponseEntity<?> createTicket(@Valid @RequestBody TicketDto ticketDto) {
+        Ticket ticket = ticketService.createTicket(ticketDto);
+        return new ResponseEntity<>(ticket, HttpStatus.CREATED);
     }
 
     @PutMapping("/update")
-    public ResponseEntity<Ticket> updateEvent(@RequestBody HashMap<String, Object> values) {
+    public ResponseEntity<?> updateEvent(@RequestBody HashMap<String, Object> values) {
         Ticket ticket = ticketService.updateTicket(values);
         return new ResponseEntity<>(ticket, HttpStatus.OK);
     }

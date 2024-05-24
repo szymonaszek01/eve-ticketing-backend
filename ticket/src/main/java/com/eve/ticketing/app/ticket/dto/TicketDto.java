@@ -1,7 +1,7 @@
 package com.eve.ticketing.app.ticket.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -11,11 +11,7 @@ import lombok.*;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class NotificationDto {
-
-    @Email(regexp = ".+[@].+[\\.].+", message = "invalid email address")
-    @NotBlank(message = "should not be blank")
-    private String email;
+public class TicketDto {
 
     @NotBlank(message = "should not be blank")
     private String firstname;
@@ -27,9 +23,16 @@ public class NotificationDto {
     @NotBlank(message = "should not be blank")
     private String phoneNumber;
 
-    @NotBlank(message = "should not be blank")
-    private String message;
-
+    @JsonProperty("is_adult")
     @NotNull(message = "should not be null")
-    private Long ticketId;
+    private Boolean isAdult;
+
+    @JsonProperty("is_student")
+    @NotNull(message = "should not be null")
+    private Boolean isStudent;
+
+    @JsonProperty("event_id")
+    @NotNull(message = "should not be null")
+    @Min(value = 1, message = "should be greater than 0")
+    private Long eventId;
 }

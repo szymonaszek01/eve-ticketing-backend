@@ -1,12 +1,12 @@
 package com.eve.ticketing.app.ticket;
 
-import com.eve.ticketing.app.ticket.dto.EventDto;
-import com.eve.ticketing.app.ticket.dto.NotificationDto;
-import com.eve.ticketing.app.ticket.dto.SeatDto;
-import com.eve.ticketing.app.ticket.dto.TicketFilterDto;
+import com.eve.ticketing.app.ticket.dto.*;
 import com.eve.ticketing.app.ticket.exception.Error;
 import com.eve.ticketing.app.ticket.exception.TicketProcessingException;
 import com.eve.ticketing.app.ticket.kafka.KafkaNotificationProducer;
+import com.google.i18n.phonenumbers.NumberParseException;
+import com.google.i18n.phonenumbers.PhoneNumberUtil;
+import com.google.i18n.phonenumbers.Phonenumber;
 import jakarta.validation.ConstraintViolationException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -64,11 +64,23 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    public void createTicket(Ticket ticket) throws TicketProcessingException, ConstraintViolationException {
+    public Ticket createTicket(TicketDto ticketDto) throws TicketProcessingException, ConstraintViolationException {
         try {
-            EventDto eventDto = getEvent(ticket.getEventId());
-            ticket.setCode(UUID.randomUUID().toString());
-            ticket.setCreatedAt(new Date(System.currentTimeMillis()));
+            if (!isPhoneNumberValid(ticketDto.getPhoneNumber())) {
+                Error error = Error.builder().method("POST").field("phone_number").value(ticketDto.getPhoneNumber()).description("phone number is invalid").build();
+                log.error(error.toString());
+                throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
+            }
+
+            EventDto eventDto = getEvent(ticketDto.getEventId());
+            Ticket ticket = Ticket.builder()
+                    .code(UUID.randomUUID().toString())
+                    .createdAt(new Date(System.currentTimeMillis()))
+                    .firstname(ticketDto.getFirstname())
+                    .lastname(ticketDto.getLastname())
+                    .phoneNumber(ticketDto.getPhoneNumber())
+                    .eventId(ticketDto.getEventId())
+                    .build();
 
             if (!Boolean.TRUE.equals(ticket.getIsAdult()) && ticket.getIsStudent()) {
                 ticket.setIsStudent(false);
@@ -90,8 +102,9 @@ public class TicketServiceImpl implements TicketService {
             publishNotification(ticket, message);
 
             log.info("Ticket (code=\"{}\", eventId={}) was created", ticket.getCode(), ticket.getEventId());
+            return ticket;
         } catch (RuntimeException e) {
-            Error error = Error.builder().method("POST").field("").value(ticket).description("invalid parameters").build();
+            Error error = Error.builder().method("POST").field("").value(ticketDto).description("invalid parameters").build();
             log.error(error.toString());
             throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
         }
@@ -127,7 +140,13 @@ public class TicketServiceImpl implements TicketService {
                 field.setAccessible(true);
                 error.setField(key);
                 error.setValue(value);
-                if (value instanceof String || value instanceof Boolean) {
+                if (value instanceof String) {
+                    if (!"phoneNumber".equals(convertedKey) || isPhoneNumberValid((String) value)) {
+                        field.set(ticket, value);
+                        updatedFields.add(convertedKey);
+                    }
+                }
+                if (value instanceof Boolean) {
                     field.set(ticket, value);
                     updatedFields.add(convertedKey);
                 }
@@ -301,5 +320,15 @@ public class TicketServiceImpl implements TicketService {
         }
 
         return camelCaseString.toString();
+    }
+
+    private boolean isPhoneNumberValid(String phoneNumberAsString) {
+        try {
+            PhoneNumberUtil phoneNumberUtil = PhoneNumberUtil.getInstance();
+            Phonenumber.PhoneNumber phoneNumber = phoneNumberUtil.parse(phoneNumberAsString, "");
+            return phoneNumberUtil.isValidNumber(phoneNumber);
+        } catch (NumberParseException e) {
+            return false;
+        }
     }
 }
