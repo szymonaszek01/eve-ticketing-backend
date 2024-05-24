@@ -20,7 +20,7 @@ public class SeatController {
     private final SeatServiceImpl seatService;
 
     @GetMapping("/all")
-    public ResponseEntity<Page<Seat>> getSeatList(@RequestParam(value = "page") int page,
+    public ResponseEntity<?> getSeatList(@RequestParam(value = "page") int page,
                                                   @RequestParam(value = "size") int size,
                                                   SeatFilterDto SeatFilterDto) {
         Page<Seat> seatPage = seatService.getSeatList(page, size, SeatFilterDto);
@@ -28,7 +28,7 @@ public class SeatController {
     }
 
     @GetMapping("/id/{id}")
-    public ResponseEntity<Seat> getSeatById(@PathVariable long id) {
+    public ResponseEntity<?> getSeatById(@PathVariable long id) {
         Seat seat = seatService.getSeatById(id);
         return new ResponseEntity<>(seat, HttpStatus.OK);
     }
@@ -36,11 +36,11 @@ public class SeatController {
     @PostMapping("/create")
     public ResponseEntity<?> createSeat(@Valid @RequestBody Seat seat) {
         seatService.createSeat(seat);
-        return new ResponseEntity<>(HttpStatus.CREATED);
+        return new ResponseEntity<>(seat, HttpStatus.CREATED);
     }
 
     @PutMapping("/update")
-    public ResponseEntity<Seat> updateSeat(@RequestBody HashMap<String, Object> values) {
+    public ResponseEntity<?> updateSeat(@RequestBody HashMap<String, Object> values) {
         Seat seat = seatService.updateSeat(values);
         return new ResponseEntity<>(seat, HttpStatus.OK);
     }
