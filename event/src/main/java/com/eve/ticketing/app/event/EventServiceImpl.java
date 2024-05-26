@@ -22,6 +22,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 import static com.eve.ticketing.app.event.EventSpecification.*;
 
@@ -57,6 +58,7 @@ public class EventServiceImpl implements EventService {
     @Transactional
     public void createEvent(Event event) throws EventProcessingException, ConstraintViolationException {
         try {
+            // TODO: Validating admin id
             if (event.getEndAt().before(event.getStartAt())) {
                 Error error = Error.builder().method("POST").field("start_at").value(event.getStartAt()).description("end date can not be before start date").build();
                 log.error(error.toString());
@@ -91,6 +93,7 @@ public class EventServiceImpl implements EventService {
         }
 
         Event event = getEventById(((Number) values.remove("id")).longValue());
+        Stream.of("admin_id").forEach(values::remove);
         values.forEach((key, value) -> {
             String convertedKey = toCamelCase(key);
             try {

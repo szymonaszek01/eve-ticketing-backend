@@ -80,4 +80,9 @@ public class Event {
     @JsonProperty("is_without_seats")
     @NotNull(message = "should not be null")
     private Boolean isWithoutSeats;
+
+    @JsonProperty("admin_id")
+    @NotNull(message = "should not be null")
+    @Min(value = 1, message = "should be greater than 0")
+    private Long adminId;
 }
