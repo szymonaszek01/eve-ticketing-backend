@@ -72,6 +72,8 @@ public class TicketServiceImpl implements TicketService {
                 throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
             }
 
+            // TODO: Validating user id
+
             EventDto eventDto = getEvent(ticketDto.getEventId());
             Ticket ticket = Ticket.builder()
                     .code(UUID.randomUUID().toString())
@@ -79,6 +81,8 @@ public class TicketServiceImpl implements TicketService {
                     .firstname(ticketDto.getFirstname())
                     .lastname(ticketDto.getLastname())
                     .phoneNumber(ticketDto.getPhoneNumber())
+                    .isAdult(ticketDto.getIsAdult())
+                    .isStudent(ticketDto.getIsStudent())
                     .eventId(ticketDto.getEventId())
                     .build();
 
@@ -130,7 +134,7 @@ public class TicketServiceImpl implements TicketService {
         }
 
         Ticket ticket = getTicketById(((Number) values.remove("id")).longValue());
-        Stream.of("code", "createdAt", "cost", "eventId").forEach(values::remove);
+        Stream.of("code", "createdAt", "cost", "eventId", "user_id").forEach(values::remove);
         EventDto eventDto = getEvent(ticket.getId());
         Set<String> updatedFields = new HashSet<>();
         values.forEach((key, value) -> {

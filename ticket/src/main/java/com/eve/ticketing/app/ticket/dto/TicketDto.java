@@ -35,4 +35,9 @@ public class TicketDto {
     @NotNull(message = "should not be null")
     @Min(value = 1, message = "should be greater than 0")
     private Long eventId;
+
+    @JsonProperty("user_id")
+    @NotNull(message = "should not be null")
+    @Min(value = 1, message = "should be greater than 0")
+    private Long userId;
 }

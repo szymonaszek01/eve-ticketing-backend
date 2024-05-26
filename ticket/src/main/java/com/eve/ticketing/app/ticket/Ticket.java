@@ -64,6 +64,11 @@ public class Ticket {
     @Min(value = 1, message = "should be greater than 0")
     private Long seatId;
 
+    @JsonProperty("user_id")
+    @NotNull(message = "should not be null")
+    @Min(value = 1, message = "should be greater than 0")
+    private Long userId;
+
     @NotNull(message = "should not be null")
     private Boolean paid;
 }
