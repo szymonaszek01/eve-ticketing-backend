@@ -1,69 +1,54 @@
 package com.eve.ticketing.app.cloudgateway.exception;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.ConstraintViolationException;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ControllerAdvice;
-import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.boot.autoconfigure.web.WebProperties;
+import org.springframework.boot.autoconfigure.web.reactive.error.AbstractErrorWebExceptionHandler;
+import org.springframework.boot.web.error.ErrorAttributeOptions;
+import org.springframework.boot.web.reactive.error.ErrorAttributes;
+import org.springframework.context.ApplicationContext;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.codec.ServerCodecConfigurer;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.server.*;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Map;
 
-@ControllerAdvice
-@Slf4j
-public class CloudGatewayApiExceptionHandler {
+@Component
+@Order(-2)
+public class CloudGatewayApiExceptionHandler extends AbstractErrorWebExceptionHandler {
 
-    @ExceptionHandler({ConstraintViolationException.class})
-    public ResponseEntity<Object> handleConstraintViolationException(ConstraintViolationException e, HttpServletRequest httpServletRequest) {
-        List<Error> errors = e.getConstraintViolations().stream()
-                .map(constraintViolation -> Error.builder()
-                        .method(httpServletRequest.getMethod())
-                        .field(toSnake(constraintViolation.getPropertyPath().toString()))
-                        .value(constraintViolation.getInvalidValue())
-                        .description(constraintViolation.getMessage()).build())
-                .toList();
-
-        errors.forEach(error -> log.error(error.toString()));
-
-        CloudGatewayApiException cloudGatewayApiException = CloudGatewayApiException.builder()
-                .status(HttpStatus.BAD_REQUEST.value())
-                .message("entity event can not be " + ("PUT".equalsIgnoreCase(httpServletRequest.getMethod()) ? "updated" : "created") + " due to constraint violation")
-                .errors(errors)
-                .build();
-
-        return new ResponseEntity<>(cloudGatewayApiException, new HttpHeaders(), cloudGatewayApiException.getStatus());
+    public CloudGatewayApiExceptionHandler(ErrorAttributes errorAttributes, WebProperties.Resources resources, ApplicationContext applicationContext, ServerCodecConfigurer configurer) {
+        super(errorAttributes, resources, applicationContext);
+        this.setMessageWriters(configurer.getWriters());
     }
 
-    @ExceptionHandler({CloudGatewayProcessingException.class})
-    public ResponseEntity<Object> handleEventProcessingException(CloudGatewayProcessingException e) {
-        List<Error> errors = List.of(e.getError());
-
-        CloudGatewayApiException cloudGatewayApiException = CloudGatewayApiException.builder()
-                .status(e.getStatus().value())
-                .message("entity event can not be processed, because an error occurred")
-                .errors(errors)
-                .build();
-
-        return new ResponseEntity<>(cloudGatewayApiException, new HttpHeaders(), cloudGatewayApiException.getStatus());
+    @Override
+    protected RouterFunction<ServerResponse> getRoutingFunction(ErrorAttributes errorAttributes) {
+        return RouterFunctions.route(RequestPredicates.all(), this::handleCloudGatewayProcessingException);
     }
 
-    private String toSnake(String str) {
-        StringBuilder result = new StringBuilder();
-        char c = str.charAt(0);
-        result.append(Character.toLowerCase(c));
+    private Mono<ServerResponse> handleCloudGatewayProcessingException(ServerRequest request) {
+        ErrorAttributeOptions errorAttributeOptions = ErrorAttributeOptions.of(ErrorAttributeOptions.Include.values());
+        Map<String, Object> errorAttributes = getErrorAttributes(request, errorAttributeOptions);
+        int status = Integer.parseInt(errorAttributes.get("status").toString());
+        Error error = Error.builder().method(request.method().toString()).field("").value("").build();
 
-        for (int i = 1; i < str.length(); i++) {
-            char ch = str.charAt(i);
-            if (Character.isUpperCase(ch)) {
-                result.append('_');
-                result.append(Character.toLowerCase(ch));
-            } else {
-                result.append(ch);
-            }
+        if (getError(request) instanceof CloudGatewayProcessingException) {
+            error = ((CloudGatewayProcessingException) getError(request)).getError();
+            status = ((CloudGatewayProcessingException) getError(request)).getStatus().value();
+        } else {
+            error.setDescription(errorAttributes.get("message").toString());
         }
 
-        return result.toString();
+        CloudGatewayApiException cloudGatewayApiException = CloudGatewayApiException.builder()
+                .status(status)
+                .message("request can not be processed, because an error occurred")
+                .errors(List.of(error))
+                .build();
+
+        return ServerResponse.status(HttpStatusCode.valueOf(status)).body(BodyInserters.fromValue(cloudGatewayApiException));
     }
 }

@@ -3,9 +3,7 @@ package com.eve.ticketing.app.cloudgateway.security;
 import com.eve.ticketing.app.cloudgateway.dto.AuthUserDto;
 import com.eve.ticketing.app.cloudgateway.exception.CloudGatewayProcessingException;
 import com.eve.ticketing.app.cloudgateway.exception.Error;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.http.HttpHeaders;
@@ -33,11 +31,11 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
     @Override
     public GatewayFilter apply(Config config) {
         return ((exchange, chain) -> {
+            Error error = Error.builder().method(exchange.getRequest().getMethod().toString().toUpperCase()).field("auth_token").value("").build();
             if (!validator.isSecured(exchange.getRequest())) {
                 return chain.filter(exchange);
             }
 
-            Error error = Error.builder().method(exchange.getRequest().getMethod().toString().toUpperCase()).field("auth_token").build();
             List<String> authorizationHeader = exchange.getRequest().getHeaders().get(HttpHeaders.AUTHORIZATION);
             if (authorizationHeader == null || authorizationHeader.get(0) == null) {
                 error.setDescription("missing jwt token");
