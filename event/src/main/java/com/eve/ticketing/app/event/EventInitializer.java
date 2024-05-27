@@ -54,6 +54,7 @@ public class EventInitializer implements CommandLineRunner {
                 .address(faker.address().streetAddress() + ", " + faker.address().zipCode() + " " + faker.address().city())
                 .localizationName(String.join(" ", faker.lorem().words(2)))
                 .isWithoutSeats(isWithoutSeats)
+                .adminId(1L)
                 .build();
     }
 

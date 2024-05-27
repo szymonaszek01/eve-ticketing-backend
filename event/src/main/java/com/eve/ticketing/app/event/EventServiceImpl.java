@@ -1,5 +1,6 @@
 package com.eve.ticketing.app.event;
 
+import com.eve.ticketing.app.event.dto.AdminDto;
 import com.eve.ticketing.app.event.dto.EventFilterDto;
 import com.eve.ticketing.app.event.exception.Error;
 import com.eve.ticketing.app.event.exception.EventProcessingException;
@@ -10,10 +11,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -32,6 +38,8 @@ import static com.eve.ticketing.app.event.EventSpecification.*;
 public class EventServiceImpl implements EventService {
 
     private final EventRepository eventRepository;
+
+    private final RestTemplate restTemplate;
 
     @Override
     public Page<Event> getEventList(int page, int size, EventFilterDto eventFilterDto) {
@@ -56,14 +64,21 @@ public class EventServiceImpl implements EventService {
 
     @Override
     @Transactional
-    public void createEvent(Event event) throws EventProcessingException, ConstraintViolationException {
+    public void createEvent(Event event, String token) throws EventProcessingException, ConstraintViolationException {
         try {
-            // TODO: Validating admin id
             if (event.getEndAt().before(event.getStartAt())) {
                 Error error = Error.builder().method("POST").field("start_at").value(event.getStartAt()).description("end date can not be before start date").build();
                 log.error(error.toString());
                 throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
             }
+
+            AdminDto adminDto = getAdmin(event.getAdminId(), token);
+            if (!"ADMIN".equals(adminDto.getRole())) {
+                Error error = Error.builder().method("POST").field("user_id").value(event.getStartAt()).description("invalid user role").build();
+                log.error(error.toString());
+                throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
+            }
+
             eventRepository.save(event);
             log.info("Event (id=\"{}\") was created", event.getId());
         } catch (RuntimeException e) {
@@ -152,6 +167,24 @@ public class EventServiceImpl implements EventService {
             Error error = Error.builder().method("DELETE").field("id").value(id).description("id not found").build();
             log.error(error.toString());
             throw new EventProcessingException(HttpStatus.NOT_FOUND, error);
+        }
+    }
+
+    private AdminDto getAdmin(long adminId, String token) throws EventProcessingException {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", token);
+            return restTemplate.exchange(
+                    "http://AUTH-USER/api/v1/auth-user/id/{id}",
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    AdminDto.class,
+                    adminId
+            ).getBody();
+        } catch (RestClientException e) {
+            Error error = Error.builder().method("").field("user_id").value(adminId).description("unable to communicate with auth user server").build();
+            log.error(error.toString());
+            throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
         }
     }
 

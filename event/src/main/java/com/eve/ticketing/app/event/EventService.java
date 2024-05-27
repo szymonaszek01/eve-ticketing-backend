@@ -13,7 +13,7 @@ public interface EventService {
 
     Event getEventById(long id) throws EventProcessingException;
 
-    void createEvent(Event event) throws EventProcessingException, ConstraintViolationException;
+    void createEvent(Event event, String token) throws EventProcessingException, ConstraintViolationException;
 
     Event updateEvent(HashMap<String, Object> values) throws EventProcessingException, ConstraintViolationException;
 

@@ -34,8 +34,8 @@ public class EventController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<?> createEvent(@Valid @RequestBody Event event) {
-        eventService.createEvent(event);
+    public ResponseEntity<?> createEvent(@Valid @RequestBody Event event, @RequestHeader("Authorization") String token) {
+        eventService.createEvent(event, token);
         return new ResponseEntity<>(event, HttpStatus.CREATED);
     }
 
