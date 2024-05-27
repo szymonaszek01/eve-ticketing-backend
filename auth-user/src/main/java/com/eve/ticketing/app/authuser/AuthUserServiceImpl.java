@@ -43,6 +43,12 @@ import static com.eve.ticketing.app.authuser.AuthUserSpecification.*;
 @AllArgsConstructor
 public class AuthUserServiceImpl implements AuthUserService {
 
+    private static final String USER = "USER";
+
+    private static final String ADMIN = "ADMIN";
+
+    private static final List<String> ADMIN_EMAIL_LIST = List.of("jan.kowalski@gmail.com");
+
     private final AuthUserRepository authUserRepository;
 
     private final JwtUtil jwtUtil;
@@ -108,7 +114,6 @@ public class AuthUserServiceImpl implements AuthUserService {
                 field.setAccessible(true);
                 error.setField(key);
                 error.setValue(value);
-                boolean isUpdated = true;
                 if (value instanceof String) {
                     if ("password".equals(convertedKey)) {
                         value = passwordEncoder.encode((String) value);
@@ -172,11 +177,11 @@ public class AuthUserServiceImpl implements AuthUserService {
                 .firstname(registerDto.getFirstname())
                 .lastname(registerDto.getLastname())
                 .phoneNumber(registerDto.getPhoneNumber())
-                .role("USER")
+                .role(ADMIN_EMAIL_LIST.contains(registerDto.getEmail()) ? ADMIN : USER)
                 .build();
         authUserRepository.save(authUser);
 
-        userDetails = new UserDetails(authUser.getId(), authUser.getEmail(), authUser.getPassword(), List.of(new SimpleGrantedAuthority("USER")));
+        userDetails = new UserDetails(authUser.getId(), authUser.getEmail(), authUser.getPassword(), List.of(new SimpleGrantedAuthority(USER)));
         authUser.setAuthToken(jwtUtil.createToken(userDetails, 3 * 60 * 60 * 1000));
         authUser.setRefreshToken(jwtUtil.createToken(userDetails, 24 * 60 * 60 * 1000));
 
@@ -207,7 +212,7 @@ public class AuthUserServiceImpl implements AuthUserService {
             log.error(error.toString());
             return new AuthUserProcessingException(HttpStatus.NOT_FOUND, error);
         });
-        UserDetails userDetails = new UserDetails(authUser.getId(), authUser.getEmail(), authUser.getPassword(), List.of(new SimpleGrantedAuthority("USER")));
+        UserDetails userDetails = new UserDetails(authUser.getId(), authUser.getEmail(), authUser.getPassword(), List.of(new SimpleGrantedAuthority(USER)));
         authUser.setAuthToken(jwtUtil.createToken(userDetails, 3 * 60 * 60 * 1000));
 
         return authUser;

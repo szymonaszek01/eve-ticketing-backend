@@ -9,6 +9,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @RequiredArgsConstructor
@@ -37,20 +38,22 @@ public class SecurityConfig {
 
     private final AuthenticationProvider authenticationProvider;
 
+    private final JwtFilter jwtFilter;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http.csrf().disable()
+        return http.csrf().disable().cors().and().csrf().disable()
                 .authorizeHttpRequests()
                 .requestMatchers(PERMIT_ALL_LIST).permitAll()
                 .requestMatchers("/api/v1/auth-user/id/{id}").hasAnyAuthority(ADMIN, USER)
                 .requestMatchers("/api/v1/auth-user/update").hasAnyAuthority(ADMIN, USER)
-                .requestMatchers("/api/v1/auth-user/refresh-token").hasAnyAuthority(ADMIN, USER)
                 .requestMatchers(HttpMethod.GET, "/api/v1/auth-user/all").hasAuthority(ADMIN)
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/auth-user/id/{id}").hasAuthority(ADMIN)
                 .and()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
                 .authenticationProvider(authenticationProvider)
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 }
