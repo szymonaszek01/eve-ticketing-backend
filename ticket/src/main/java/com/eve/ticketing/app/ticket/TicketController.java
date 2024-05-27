@@ -35,8 +35,8 @@ public class TicketController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<?> createTicket(@Valid @RequestBody TicketDto ticketDto) {
-        Ticket ticket = ticketService.createTicket(ticketDto);
+    public ResponseEntity<?> createTicket(@Valid @RequestBody TicketDto ticketDto, @RequestHeader("Authorization") String token) {
+        Ticket ticket = ticketService.createTicket(ticketDto, token);
         return new ResponseEntity<>(ticket, HttpStatus.CREATED);
     }
 

@@ -15,6 +15,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -64,7 +65,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    public Ticket createTicket(TicketDto ticketDto) throws TicketProcessingException, ConstraintViolationException {
+    public Ticket createTicket(TicketDto ticketDto, String token) throws TicketProcessingException, ConstraintViolationException {
         try {
             if (!isPhoneNumberValid(ticketDto.getPhoneNumber())) {
                 Error error = Error.builder().method("POST").field("phone_number").value(ticketDto.getPhoneNumber()).description("phone number is invalid").build();
@@ -72,8 +73,7 @@ public class TicketServiceImpl implements TicketService {
                 throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
             }
 
-            // TODO: Validating user id
-
+            UserDto userDto = getUser(ticketDto.getUserId(), token);
             EventDto eventDto = getEvent(ticketDto.getEventId());
             Ticket ticket = Ticket.builder()
                     .code(UUID.randomUUID().toString())
@@ -84,6 +84,7 @@ public class TicketServiceImpl implements TicketService {
                     .isAdult(ticketDto.getIsAdult())
                     .isStudent(ticketDto.getIsStudent())
                     .eventId(ticketDto.getEventId())
+                    .userId(userDto.getId())
                     .build();
 
             if (!Boolean.TRUE.equals(ticket.getIsAdult()) && ticket.getIsStudent()) {
@@ -253,6 +254,24 @@ public class TicketServiceImpl implements TicketService {
                 .message(message)
                 .ticketId(ticket.getId())
                 .build());
+    }
+
+    private UserDto getUser(long userId, String token) throws TicketProcessingException {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", token);
+            return restTemplate.exchange(
+                    "http://AUTH-USER/api/v1/auth-user/id/{id}",
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    UserDto.class,
+                    userId
+            ).getBody();
+        } catch (RestClientException e) {
+            Error error = Error.builder().method("").field("user_id").value(userId).description("unable to communicate with auth user server").build();
+            log.error(error.toString());
+            throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
+        }
     }
 
     private EventDto getEvent(long eventId) throws TicketProcessingException {
