@@ -30,6 +30,7 @@ public class SecurityConfig {
             "/api/v1/auth-user/login",
             "/api/v1/auth-user/register",
             "/api/v1/auth-user/validate-token/{token}",
+            "/api/v1/auth-user/refresh-token"
     };
 
     private static final String ADMIN = "ADMIN";
@@ -45,9 +46,9 @@ public class SecurityConfig {
         return http.csrf().disable().cors().and().csrf().disable()
                 .authorizeHttpRequests()
                 .requestMatchers(PERMIT_ALL_LIST).permitAll()
-                .requestMatchers("/api/v1/auth-user/id/{id}").hasAnyAuthority(ADMIN, USER)
+                .requestMatchers(HttpMethod.GET, "/api/v1/auth-user/id/{id}").hasAnyAuthority(ADMIN, USER)
                 .requestMatchers("/api/v1/auth-user/update").hasAnyAuthority(ADMIN, USER)
-                .requestMatchers(HttpMethod.GET, "/api/v1/auth-user/all").hasAuthority(ADMIN)
+                .requestMatchers("/api/v1/auth-user/all").hasAuthority(ADMIN)
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/auth-user/id/{id}").hasAuthority(ADMIN)
                 .and()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)

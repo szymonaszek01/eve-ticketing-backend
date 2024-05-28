@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
@@ -34,6 +35,27 @@ public class SmsNotificationApiExceptionHandler {
                 .build();
 
         return new ResponseEntity<>(smsNotificationApiException, new HttpHeaders(), smsNotificationApiException.getStatus());
+    }
+
+    @ExceptionHandler({MethodArgumentNotValidException.class})
+    public ResponseEntity<Object> handleMethodArgumentNotValidException(MethodArgumentNotValidException e, HttpServletRequest httpServletRequest) {
+        List<Error> errors = e.getBindingResult().getFieldErrors().stream()
+                .map(fieldError -> Error.builder()
+                        .method(httpServletRequest.getMethod())
+                        .field(toSnake(fieldError.getField()))
+                        .value(fieldError.getRejectedValue())
+                        .description(fieldError.getDefaultMessage()).build())
+                .toList();
+
+        errors.forEach(error -> log.error(error.toString()));
+
+        SmsNotificationApiException authUserApiException = SmsNotificationApiException.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .message("entity sms-notification can not be " + ("PUT".equalsIgnoreCase(httpServletRequest.getMethod()) ? "updated" : "created") + " due to field errors")
+                .errors(errors)
+                .build();
+
+        return new ResponseEntity<>(authUserApiException, new HttpHeaders(), authUserApiException.getStatus());
     }
 
     @ExceptionHandler({SmsNotificationProcessingException.class})

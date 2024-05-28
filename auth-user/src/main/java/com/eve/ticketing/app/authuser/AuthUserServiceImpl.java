@@ -14,6 +14,7 @@ import com.google.i18n.phonenumbers.Phonenumber;
 import jakarta.validation.ConstraintViolationException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -114,11 +115,21 @@ public class AuthUserServiceImpl implements AuthUserService {
                 field.setAccessible(true);
                 error.setField(key);
                 error.setValue(value);
+                boolean isUpdated = true;
                 if (value instanceof String) {
                     if ("password".equals(convertedKey)) {
-                        value = passwordEncoder.encode((String) value);
+                        UserDetails userDetails = getUserDetails(authUser.getEmail(), (String) value);
+                        String pattern = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=])(?=\\S+$).{8,}$";
+                        if (userDetails != null || !((String) value).matches(pattern)) {
+                            isUpdated = false;
+                        } else {
+                            value = passwordEncoder.encode((String) value);
+                        }
                     }
-                    if (!"phoneNumber".equals(convertedKey) || isPhoneNumberValid((String) value)) {
+                    if ("phoneNumber".equals(convertedKey) && isPhoneNumberNotValid((String) value)) {
+                        isUpdated = false;
+                    }
+                    if (isUpdated) {
                         field.set(authUser, value);
                     }
                 }
@@ -154,7 +165,7 @@ public class AuthUserServiceImpl implements AuthUserService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public AuthUser registerAuthUser(RegisterDto registerDto) throws AuthUserProcessingException, ConstraintViolationException {
         Error error = Error.builder().method("POST").build();
-        if (!isPhoneNumberValid(registerDto.getPhoneNumber())) {
+        if (isPhoneNumberNotValid(registerDto.getPhoneNumber())) {
             error.setField("phone_number");
             error.setValue(registerDto.getPhoneNumber());
             error.setDescription("phone number is invalid");
@@ -166,7 +177,7 @@ public class AuthUserServiceImpl implements AuthUserService {
         if (userDetails != null) {
             error.setField("email");
             error.setValue(userDetails.getUsername());
-            error.setDescription("email already in use");
+            error.setDescription("email or password already in use");
             throw new AuthUserProcessingException(HttpStatus.BAD_REQUEST, error);
         }
 
@@ -179,7 +190,15 @@ public class AuthUserServiceImpl implements AuthUserService {
                 .phoneNumber(registerDto.getPhoneNumber())
                 .role(ADMIN_EMAIL_LIST.contains(registerDto.getEmail()) ? ADMIN : USER)
                 .build();
-        authUserRepository.save(authUser);
+
+        try {
+            authUserRepository.save(authUser);
+        } catch (DataIntegrityViolationException e) {
+            error.setField("email");
+            error.setValue(authUser.getEmail());
+            error.setDescription("email already in use");
+            throw new AuthUserProcessingException(HttpStatus.CONFLICT, error);
+        }
 
         userDetails = new UserDetails(authUser.getId(), authUser.getEmail(), authUser.getPassword(), List.of(new SimpleGrantedAuthority(USER)));
         authUser.setAuthToken(jwtUtil.createToken(userDetails, 3 * 60 * 60 * 1000));
@@ -240,13 +259,13 @@ public class AuthUserServiceImpl implements AuthUserService {
         return camelCaseString.toString();
     }
 
-    private boolean isPhoneNumberValid(String phoneNumberAsString) {
+    private boolean isPhoneNumberNotValid(String phoneNumberAsString) {
         try {
             PhoneNumberUtil phoneNumberUtil = PhoneNumberUtil.getInstance();
             Phonenumber.PhoneNumber phoneNumber = phoneNumberUtil.parse(phoneNumberAsString, "");
-            return phoneNumberUtil.isValidNumber(phoneNumber);
+            return !phoneNumberUtil.isValidNumber(phoneNumber);
         } catch (NumberParseException e) {
-            return false;
+            return true;
         }
     }
 

@@ -51,8 +51,10 @@ public class RouteValidator {
 
     public boolean isValidRole(ServerHttpRequest request, AuthUserDto authUserDto) {
         List<Route> securedApi = getSecuredApiList();
+        String method = request.getMethod().toString().toUpperCase();
+        String path = request.getPath().toString();
         String role = authUserDto.getRole();
-        return securedApi.stream().anyMatch(route -> isSecured(request) && route.getRoleList().contains(role));
+        return securedApi.stream().anyMatch(route -> method.equals(route.getMethod()) && path.contains(route.getPath()) && route.getRoleList().contains(role));
     }
 
     private List<Route> getSecuredApiList() {
