@@ -1,13 +1,16 @@
 package com.eve.ticketing.app.ticket;
 
+import com.eve.ticketing.app.ticket.dto.TicketDto;
 import com.eve.ticketing.app.ticket.dto.TicketFilterDto;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
+
+import java.util.HashMap;
 
 @Tag(name = "Ticket", description = "Ticket management APIs")
 @RequestMapping("/api/v1/ticket")
@@ -17,41 +20,35 @@ public class TicketController {
 
     private final TicketServiceImpl ticketService;
 
-    @PostMapping("/create")
-    public ResponseEntity<?> createTicket(@RequestBody Ticket ticket) {
-        try {
-            ticketService.createOrUpdateTicket(ticket);
-            return new ResponseEntity<>(HttpStatus.CREATED);
-        } catch (TicketProcessingException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
-        }
-    }
-
-    @GetMapping("/id/{id}")
-    public ResponseEntity<Ticket> getTicketById(@PathVariable long id) {
-        try {
-            Ticket ticket = ticketService.getTicketById(id);
-            return new ResponseEntity<>(ticket, HttpStatus.OK);
-        } catch (TicketProcessingException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
-        }
-    }
-
     @GetMapping("/all")
-    public ResponseEntity<Page<Ticket>> getTicketList(@RequestParam(value = "page") int page,
+    public ResponseEntity<?> getTicketList(@RequestParam(value = "page") int page,
                                                       @RequestParam(value = "size") int size,
                                                       TicketFilterDto ticketFilterDto) {
         Page<Ticket> ticketPage = ticketService.getTicketList(page, size, ticketFilterDto);
         return new ResponseEntity<>(ticketPage, HttpStatus.OK);
     }
 
+    @GetMapping("/id/{id}")
+    public ResponseEntity<?> getTicketById(@PathVariable long id) {
+        Ticket ticket = ticketService.getTicketById(id);
+        return new ResponseEntity<>(ticket, HttpStatus.OK);
+    }
+
+    @PostMapping("/create")
+    public ResponseEntity<?> createTicket(@Valid @RequestBody TicketDto ticketDto, @RequestHeader("Authorization") String token) {
+        Ticket ticket = ticketService.createTicket(ticketDto, token);
+        return new ResponseEntity<>(ticket, HttpStatus.CREATED);
+    }
+
+    @PutMapping("/update")
+    public ResponseEntity<?> updateEvent(@RequestBody HashMap<String, Object> values) {
+        Ticket ticket = ticketService.updateTicket(values);
+        return new ResponseEntity<>(ticket, HttpStatus.OK);
+    }
+
     @DeleteMapping("/id/{id}")
     public ResponseEntity<?> deleteTicketById(@PathVariable long id) {
-        try {
-            ticketService.deleteTicketById(id);
-            return new ResponseEntity<>(HttpStatus.OK);
-        } catch (TicketProcessingException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
-        }
+        ticketService.deleteTicketById(id);
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 }

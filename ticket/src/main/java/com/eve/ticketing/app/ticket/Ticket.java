@@ -1,7 +1,13 @@
 package com.eve.ticketing.app.ticket;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -19,34 +25,50 @@ public class Ticket {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true)
+    @NotBlank(message = "should not be blank")
     private String code;
 
     @JsonProperty("created_at")
-    @Column(nullable = false)
+    @NotNull(message = "should not be null")
     private Date createdAt;
 
-    @Column(nullable = false)
+    @NotBlank(message = "should not be blank")
     private String firstname;
 
-    @Column(nullable = false)
+    @NotBlank(message = "should not be blank")
     private String lastname;
 
     @JsonProperty("phone_number")
-    @Column(nullable = false)
+    @NotBlank(message = "should not be blank")
     private String phoneNumber;
 
+    @NotNull(message = "should not be null")
+    @Min(value = 0, message = "should be greater than or equal 0")
     private BigDecimal cost;
 
     @JsonProperty("is_adult")
-    private boolean isAdult;
+    @NotNull(message = "should not be null")
+    private Boolean isAdult;
 
     @JsonProperty("is_student")
-    private boolean isStudent;
+    @NotNull(message = "should not be null")
+    private Boolean isStudent;
 
     @JsonProperty("event_id")
-    private long eventId;
+    @NotNull(message = "should not be null")
+    @Min(value = 1, message = "should be greater than 0")
+    private Long eventId;
 
     @JsonProperty("seat_id")
-    private long seatId;
+    @NotNull(message = "should not be null")
+    @Min(value = 1, message = "should be greater than 0")
+    private Long seatId;
+
+    @JsonProperty("user_id")
+    @NotNull(message = "should not be null")
+    @Min(value = 1, message = "should be greater than 0")
+    private Long userId;
+
+    @NotNull(message = "should not be null")
+    private Boolean paid;
 }

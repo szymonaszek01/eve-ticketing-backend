@@ -28,7 +28,7 @@ public class EventInitializer implements CommandLineRunner {
     public void run(String... args) {
         log.info("Application has started generating \"Event\" data");
         List<Event> eventList = new ArrayList<>();
-        eventList.add(createEvent(new Date(System.currentTimeMillis() + DAY * 50), 1L, false));
+        eventList.add(createEvent(new Date(System.currentTimeMillis() + DAY * 50), 1000L, false));
         for (int i = 0; i < 99; i++) {
             eventList.add(createEvent(null, null, true));
         }
@@ -38,7 +38,7 @@ public class EventInitializer implements CommandLineRunner {
 
     private Event createEvent(Date date, Long maxTicketAmount, boolean isWithoutSeats) {
         Faker faker = new Faker();
-        date = date == null ? faker.date().between(new Date((System.currentTimeMillis() - 2 * YEAR)), new Date((System.currentTimeMillis() + 2 * YEAR))) : date;
+        date = date == null ? faker.date().between(new Date((System.currentTimeMillis() + YEAR)), new Date((System.currentTimeMillis() + 4 * YEAR))) : date;
         return Event.builder()
                 .name(capitalize(String.join(" ", faker.lorem().words(3))))
                 .description(String.join(" ", faker.lorem().sentences(5)))
@@ -46,14 +46,15 @@ public class EventInitializer implements CommandLineRunner {
                 .isSoldOut(false)
                 .unitPrice(BigDecimal.valueOf(faker.number().numberBetween(100, 1000)))
                 .currency("$")
-                .childrenDiscount(BigDecimal.valueOf(0.2))
-                .studentsDiscount(BigDecimal.valueOf(0.5))
+                .childrenDiscount(BigDecimal.valueOf(20))
+                .studentsDiscount(BigDecimal.valueOf(50))
                 .startAt(date)
                 .endAt(new Date(date.getTime() + 2 * HOUR))
                 .country(faker.address().country())
                 .address(faker.address().streetAddress() + ", " + faker.address().zipCode() + " " + faker.address().city())
                 .localizationName(String.join(" ", faker.lorem().words(2)))
                 .isWithoutSeats(isWithoutSeats)
+                .adminId(1L)
                 .build();
     }
 

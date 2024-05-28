@@ -1,16 +1,25 @@
 package com.eve.ticketing.app.event;
 
+import com.eve.ticketing.app.event.dto.AdminDto;
 import com.eve.ticketing.app.event.dto.EventFilterDto;
+import com.eve.ticketing.app.event.exception.Error;
+import com.eve.ticketing.app.event.exception.EventProcessingException;
+import jakarta.validation.ConstraintViolationException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -19,6 +28,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 import static com.eve.ticketing.app.event.EventSpecification.*;
 
@@ -28,6 +38,8 @@ import static com.eve.ticketing.app.event.EventSpecification.*;
 public class EventServiceImpl implements EventService {
 
     private final EventRepository eventRepository;
+
+    private final RestTemplate restTemplate;
 
     @Override
     public Page<Event> getEventList(int page, int size, EventFilterDto eventFilterDto) {
@@ -44,83 +56,135 @@ public class EventServiceImpl implements EventService {
     @Override
     public Event getEventById(long id) throws EventProcessingException {
         return eventRepository.findById(id).orElseThrow(() -> {
-            log.error("Event (id=\"{}\") was not found", id);
-            return new EventProcessingException("Event was not found - invalid event id");
+            Error error = Error.builder().method("GET").field("id").value(id).description("id not found").build();
+            log.error(error.toString());
+            return new EventProcessingException(HttpStatus.NOT_FOUND, error);
         });
     }
 
     @Override
     @Transactional
-    public void createEvent(Event event) throws EventProcessingException {
+    public void createEvent(Event event, String token) throws EventProcessingException, ConstraintViolationException {
         try {
+            if (event.getEndAt().before(event.getStartAt())) {
+                Error error = Error.builder().method("POST").field("start_at").value(event.getStartAt()).description("end date can not be before start date").build();
+                log.error(error.toString());
+                throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
+            }
+
+            AdminDto adminDto = getAdmin(event.getAdminId(), token);
+            if (!"ADMIN".equals(adminDto.getRole())) {
+                Error error = Error.builder().method("POST").field("user_id").value(event.getStartAt()).description("invalid user role").build();
+                log.error(error.toString());
+                throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
+            }
+
             eventRepository.save(event);
             log.info("Event (id=\"{}\") was created", event.getId());
         } catch (RuntimeException e) {
-            log.error("Event was not created - {}", e.getMessage());
-            throw new EventProcessingException("Event was not created - " + e.getMessage());
+            Error error = Error.builder().method("POST").field("").value(event).description("invalid parameters").build();
+            log.error(error.toString());
+            throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
         }
     }
 
     @Override
-    @Transactional(isolation = Isolation.SERIALIZABLE)
-    public void updateEvent(HashMap<String, Object> values) throws EventProcessingException {
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    public Event updateEvent(HashMap<String, Object> values) throws EventProcessingException, ConstraintViolationException {
+        Error error = Error.builder().method("PUT").build();
         if (values == null) {
-            log.error("Event was not updated - empty values");
-            throw new EventProcessingException("Event was not updated - empty values");
+            error.setField("");
+            error.setValue("");
+            error.setDescription("empty values");
+            log.error(error.toString());
+            throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
+        }
+        if (values.get("id") == null || !(values.get("id") instanceof Number)) {
+            error.setField("id");
+            error.setValue(Objects.toString(values.get("id"), ""));
+            error.setDescription("can not be null or has different type than Number");
+            log.error(error.toString());
+            throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
         }
 
         Event event = getEventById(((Number) values.remove("id")).longValue());
+        Stream.of("admin_id").forEach(values::remove);
         values.forEach((key, value) -> {
             String convertedKey = toCamelCase(key);
             try {
                 Field field = event.getClass().getDeclaredField(convertedKey);
                 field.setAccessible(true);
-                boolean isUpdated = false;
-                if ((value instanceof String && !StringUtils.isBlank((String) value)) || (value instanceof Boolean)) {
+                error.setField(key);
+                error.setValue(value);
+                if (value instanceof String || value instanceof Boolean) {
                     if ("startAt".equals(convertedKey) || "endAt".equals(convertedKey)) {
                         DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                         value = formatter.parse(Objects.toString(value, ""));
                     }
                     field.set(event, value);
-                    isUpdated = true;
                 }
-                if ((value instanceof Number && 0 <= ((Number) value).longValue()) && "maxTicketAmount".equals(convertedKey)) {
+                if (value instanceof Number && "maxTicketAmount".equals(convertedKey)) {
                     field.set(event, ((Number) value).longValue());
-                    isUpdated = true;
                 }
-                if ((value instanceof Double && 0 <= (Double) value) && ("unitPrice".equals(convertedKey) || "childrenDiscount".equals(convertedKey) || "studentsDiscount".equals(convertedKey))) {
+                if (value instanceof Double && ("unitPrice".equals(convertedKey) || "childrenDiscount".equals(convertedKey) || "studentsDiscount".equals(convertedKey))) {
                     field.set(event, BigDecimal.valueOf((Double) value));
-                    isUpdated = true;
-                }
-                if (isUpdated) {
-                    log.info("Event (id=\"{}\") field \"{}\" was updated to \"{}\"", event.getId(), convertedKey, Objects.toString(value, ""));
                 }
             } catch (NullPointerException e) {
-                log.error("Event (id=\"{}\") was not updated - field can not be null", event.getId());
+                error.setDescription("field can not be null");
+                log.error(error.toString());
             } catch (NoSuchFieldException e) {
-                log.error("Event (id=\"{}\") was not updated - field \"{}\" does not exist", event.getId(), convertedKey);
+                error.setDescription("field does not exists");
+                log.error(error.toString());
             } catch (IllegalAccessException e) {
-                log.error("Event (id=\"{}\") was not updated - illegal access to field \"{}\"", event.getId(), convertedKey);
+                error.setDescription("illegal access to field");
+                log.error(error.toString());
             } catch (ParseException e) {
-                log.error(e.getMessage());
+                error.setDescription(e.getMessage());
+                log.error(error.toString());
             }
         });
 
         if (event.getEndAt().before(event.getStartAt())) {
-            log.error("Event was not updated - end date can not be before start date");
-            throw new EventProcessingException("Event was not updated - end date can not be before start date");
+            error.setField("start_at");
+            error.setValue(event.getStartAt());
+            error.setDescription("end date can not be before start date");
+            log.error(error.toString());
+            throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
         }
+
+        eventRepository.flush();
+
+        return event;
     }
 
     @Override
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void deleteEventById(long id) throws EventProcessingException {
         try {
             eventRepository.deleteById(id);
             log.info("Event (id=\"{}\") was deleted", id);
         } catch (RuntimeException e) {
-            log.error("Event (id=\"{}\") was not deleted", id);
-            throw new EventProcessingException("Event was not deleted - invalid event id");
+            Error error = Error.builder().method("DELETE").field("id").value(id).description("id not found").build();
+            log.error(error.toString());
+            throw new EventProcessingException(HttpStatus.NOT_FOUND, error);
+        }
+    }
+
+    private AdminDto getAdmin(long adminId, String token) throws EventProcessingException {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", token);
+            return restTemplate.exchange(
+                    "http://AUTH-USER/api/v1/auth-user/id/{id}",
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    AdminDto.class,
+                    adminId
+            ).getBody();
+        } catch (RestClientException e) {
+            Error error = Error.builder().method("").field("user_id").value(adminId).description("unable to communicate with auth user server").build();
+            log.error(error.toString());
+            throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
         }
     }
 

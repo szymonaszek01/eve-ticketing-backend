@@ -1,7 +1,12 @@
 package com.eve.ticketing.app.seat;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 @Builder
@@ -18,15 +23,19 @@ public class Seat {
 
     private String sector;
 
-    @Column(nullable = false)
-    private int row;
+    @NotNull(message = "should not be null")
+    @Min(value = 0, message = "should be greater than or equal 0")
+    private Integer row;
 
-    @Column(nullable = false)
-    private int number;
+    @NotNull(message = "should not be null")
+    @Min(value = 0, message = "should be greater than or equal 0")
+    private Integer number;
 
-    @JsonProperty("occupied")
-    private boolean occupied;
+    @NotNull(message = "should not be null")
+    private Boolean occupied;
 
     @JsonProperty("event_id")
-    private long eventId;
+    @NotNull(message = "should not be null")
+    @Min(value = 1, message = "should be greater than 0")
+    private Long eventId;
 }

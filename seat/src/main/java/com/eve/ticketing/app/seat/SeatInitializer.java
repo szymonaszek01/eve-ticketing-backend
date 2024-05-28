@@ -30,7 +30,7 @@ public class SeatInitializer implements CommandLineRunner {
                             .sector("Sector " + sectorList.get(i))
                             .row(j + 1)
                             .number(k + 1)
-                            .eventId(1)
+                            .eventId(1L)
                             .occupied(faker.number().numberBetween(0, 2) == 1)
                             .build());
                 }

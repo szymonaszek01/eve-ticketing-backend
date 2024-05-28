@@ -1,6 +1,8 @@
 package com.eve.ticketing.app.event;
 
 import com.eve.ticketing.app.event.dto.EventFilterDto;
+import com.eve.ticketing.app.event.exception.EventProcessingException;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.data.domain.Page;
 
 import java.util.HashMap;
@@ -11,9 +13,9 @@ public interface EventService {
 
     Event getEventById(long id) throws EventProcessingException;
 
-    void createEvent(Event event) throws EventProcessingException;
+    void createEvent(Event event, String token) throws EventProcessingException, ConstraintViolationException;
 
-    void updateEvent(HashMap<String, Object> values) throws EventProcessingException;
+    Event updateEvent(HashMap<String, Object> values) throws EventProcessingException, ConstraintViolationException;
 
     void deleteEventById(long id) throws EventProcessingException;
 }

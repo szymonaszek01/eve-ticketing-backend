@@ -1,6 +1,7 @@
 package com.eve.ticketing.app.smsnotification.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -12,24 +13,23 @@ import lombok.*;
 @NoArgsConstructor
 public class NotificationDto {
 
-    @NotNull
-    @NotBlank
+    @Email(regexp = ".+[@].+[\\.].+", message = "invalid email address")
+    @NotBlank(message = "should not be blank")
     private String email;
 
-    @JsonProperty("phone_number")
-    @NotNull
-    @NotBlank
-    private String phoneNumber;
-
-    @JsonProperty("event_name")
-    @NotNull
-    @NotBlank
+    @NotBlank(message = "should not be blank")
     private String firstname;
 
-    @NotNull
-    @NotBlank
+    @NotBlank(message = "should not be blank")
+    private String lastname;
+
+    @JsonProperty("phone_number")
+    @NotBlank(message = "should not be blank")
+    private String phoneNumber;
+
+    @NotBlank(message = "should not be blank")
     private String message;
 
-    @NotNull
+    @NotNull(message = "should not be null")
     private Long ticketId;
 }
