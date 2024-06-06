@@ -11,9 +11,9 @@ import java.util.List;
 @NoArgsConstructor
 public class SeatApiException {
 
-    private Integer status;
+        private Integer status;
 
-    private String message;
+        private String message;
 
-    private List<Error> errors;
+        private List<Error> errors;
 }
