@@ -16,17 +16,27 @@ public class EventSpecification {
     }
 
     public static Specification<Event> eventUnitPriceBetween(Double minUnitPrice, Double maxUnitPrice) {
-        if (minUnitPrice == null || maxUnitPrice == null || minUnitPrice < 0 || maxUnitPrice < 0 || minUnitPrice > maxUnitPrice) {
+        if (minUnitPrice == null && maxUnitPrice == null) {
             return null;
         }
-        return (root, query, criteriaBuilder) -> criteriaBuilder.between(root.get("unitPrice"), BigDecimal.valueOf(minUnitPrice), BigDecimal.valueOf(maxUnitPrice));
+        double finalMinUnitPrice = (minUnitPrice == null) ? 0 : minUnitPrice;
+        double finalMaxUnitPrice = (maxUnitPrice == null) ? 0 : maxUnitPrice;
+        if (finalMinUnitPrice < 0 || finalMaxUnitPrice < 0 || finalMinUnitPrice > finalMaxUnitPrice) {
+            return null;
+        }
+        return (root, query, criteriaBuilder) -> criteriaBuilder.between(root.get("unitPrice"), BigDecimal.valueOf(finalMinUnitPrice), BigDecimal.valueOf(finalMaxUnitPrice));
     }
 
     public static Specification<Event> eventStartAtBetween(Date minDate, Date maxDate) {
-        if (minDate == null || maxDate == null || minDate.after(maxDate)) {
+        if (minDate == null && maxDate == null) {
             return null;
         }
-        return (root, query, criteriaBuilder) -> criteriaBuilder.between(root.get("startAt"), minDate, maxDate);
+        Date finalMinDate = (minDate == null) ? new Date(System.currentTimeMillis()) : minDate;
+        Date finalMaxDate = (maxDate == null) ? new Date(System.currentTimeMillis()) : maxDate;
+        if (finalMinDate.after(finalMaxDate)) {
+            return null;
+        }
+        return (root, query, criteriaBuilder) -> criteriaBuilder.between(root.get("startAt"), finalMinDate, finalMaxDate);
     }
 
     public static Specification<Event> eventEndAtBetween(Date minDate, Date maxDate) {

@@ -26,6 +26,7 @@ import java.math.BigDecimal;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -43,10 +44,12 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public Page<Event> getEventList(int page, int size, EventFilterDto eventFilterDto) {
+        Date minDate = EventUtil.getDateFromString(eventFilterDto.getMinDate());
+        Date maxDate = EventUtil.getDateFromString(eventFilterDto.getMaxDate());
         Specification<Event> eventSpecification = Specification.where(eventNameEqual(eventFilterDto.getName()))
                 .and(eventUnitPriceBetween(eventFilterDto.getMinUnitPrice(), eventFilterDto.getMaxUnitPrice()))
-                .and(eventStartAtBetween(eventFilterDto.getMinDate(), eventFilterDto.getMaxDate()))
-                .and(eventEndAtBetween(eventFilterDto.getMinDate(), eventFilterDto.getMaxDate()))
+                .and(eventStartAtBetween(minDate, maxDate))
+                .and(eventEndAtBetween(minDate, maxDate))
                 .and(eventCountryEqual(eventFilterDto.getCountry())).and(eventAddressEqual(eventFilterDto.getAddress()));
         Pageable pageable = PageRequest.of(page, size);
 

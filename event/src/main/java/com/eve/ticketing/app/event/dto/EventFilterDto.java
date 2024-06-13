@@ -2,8 +2,6 @@ package com.eve.ticketing.app.event.dto;
 
 import lombok.*;
 
-import java.util.Date;
-
 @Builder
 @Getter
 @Setter
@@ -17,9 +15,9 @@ public class EventFilterDto {
 
     private Double maxUnitPrice;
 
-    private Date minDate;
+    private String minDate;
 
-    private Date maxDate;
+    private String maxDate;
 
     private String country;
 
