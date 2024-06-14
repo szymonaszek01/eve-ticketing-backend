@@ -9,7 +9,7 @@ import java.util.HashMap;
 
 public interface EventService {
 
-    Page<Event> getEventList(int page, int size, EventFilterDto eventFilterDto);
+    Page<Event> getEventList(int page, int size, EventFilterDto eventFilterDto, String[] sortArray);
 
     Event getEventById(long id) throws EventProcessingException;
 

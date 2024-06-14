@@ -22,8 +22,9 @@ public class EventController {
     @GetMapping("/all")
     public ResponseEntity<?> getEventList(@RequestParam(value = "page") int page,
                                           @RequestParam(value = "size") int size,
+                                          @RequestParam(defaultValue = "id,desc") String[] sort,
                                           EventFilterDto eventFilterDto) {
-        Page<Event> eventPage = eventService.getEventList(page, size, eventFilterDto);
+        Page<Event> eventPage = eventService.getEventList(page, size, eventFilterDto, sort);
         return new ResponseEntity<>(eventPage, HttpStatus.OK);
     }
 

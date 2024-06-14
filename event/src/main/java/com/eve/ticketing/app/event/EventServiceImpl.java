@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -26,9 +27,7 @@ import java.math.BigDecimal;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static com.eve.ticketing.app.event.EventSpecification.*;
@@ -43,7 +42,7 @@ public class EventServiceImpl implements EventService {
     private final RestTemplate restTemplate;
 
     @Override
-    public Page<Event> getEventList(int page, int size, EventFilterDto eventFilterDto) {
+    public Page<Event> getEventList(int page, int size, EventFilterDto eventFilterDto, String[] sortArray) {
         Date minDate = EventUtil.getDateFromString(eventFilterDto.getMinDate());
         Date maxDate = EventUtil.getDateFromString(eventFilterDto.getMaxDate());
         Specification<Event> eventSpecification = Specification.where(eventNameEqual(eventFilterDto.getName()))
@@ -51,7 +50,27 @@ public class EventServiceImpl implements EventService {
                 .and(eventStartAtBetween(minDate, maxDate))
                 .and(eventEndAtBetween(minDate, maxDate))
                 .and(eventCountryEqual(eventFilterDto.getCountry())).and(eventAddressEqual(eventFilterDto.getAddress()));
-        Pageable pageable = PageRequest.of(page, size);
+
+        List<String> allowedSortProperties = Stream.of("startAt", "endAt", "unitPrice", "maxTicketAmount", "studentsDiscount", "childrenDiscount").toList();
+        List<String> allowedSortDirections = Stream.of(Sort.Direction.ASC.toString(), Sort.Direction.DESC.toString()).toList();
+        if (!sortArray[0].contains(",")) {
+            sortArray = new String[]{String.join(",", sortArray)};
+        }
+        List<Sort.Order> orderList = Arrays.stream(sortArray)
+                .filter(sort -> {
+                    String[] splitedSort = sort.split(",");
+                    if (splitedSort.length < 2) {
+                        return false;
+                    }
+                    return allowedSortProperties.contains(toCamelCase(splitedSort[0])) && allowedSortDirections.contains(splitedSort[1].toUpperCase());
+                })
+                .map(sort -> {
+                    String[] splitedSort = sort.split(",");
+                    return new Sort.Order(Sort.Direction.fromString(splitedSort[1]), toCamelCase(splitedSort[0]));
+                })
+                .toList();
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(orderList));
 
         return eventRepository.findAll(eventSpecification, pageable);
     }
