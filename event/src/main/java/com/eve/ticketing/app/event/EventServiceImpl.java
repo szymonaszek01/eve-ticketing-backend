@@ -51,7 +51,7 @@ public class EventServiceImpl implements EventService {
                 .and(eventEndAtBetween(minDate, maxDate))
                 .and(eventCountryEqual(eventFilterDto.getCountry())).and(eventAddressEqual(eventFilterDto.getAddress()));
 
-        List<String> allowedSortProperties = Stream.of("startAt", "endAt", "unitPrice", "maxTicketAmount", "studentsDiscount", "childrenDiscount").toList();
+        List<String> allowedSortProperties = Stream.of("id", "startAt", "endAt", "unitPrice", "maxTicketAmount", "studentsDiscount", "childrenDiscount").toList();
         List<String> allowedSortDirections = Stream.of(Sort.Direction.ASC.toString(), Sort.Direction.DESC.toString()).toList();
         if (!sortArray[0].contains(",")) {
             sortArray = new String[]{String.join(",", sortArray)};

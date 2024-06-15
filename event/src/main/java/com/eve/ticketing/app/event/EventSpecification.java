@@ -12,7 +12,7 @@ public class EventSpecification {
         if (StringUtils.isBlank(name)) {
             return null;
         }
-        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("name"), name);
+        return (root, query, criteriaBuilder) -> criteriaBuilder.like(criteriaBuilder.upper(root.get("name")), "%" + name.toUpperCase() + "%");
     }
 
     public static Specification<Event> eventUnitPriceBetween(Double minUnitPrice, Double maxUnitPrice) {
