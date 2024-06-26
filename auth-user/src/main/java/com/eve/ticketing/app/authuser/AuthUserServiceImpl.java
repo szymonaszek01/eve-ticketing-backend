@@ -18,6 +18,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,13 +32,11 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Field;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static com.eve.ticketing.app.authuser.AuthUserSpecification.*;
+import static com.eve.ticketing.app.authuser.AuthUserUtil.getDateFromString;
 
 @Slf4j
 @Service
@@ -59,12 +58,35 @@ public class AuthUserServiceImpl implements AuthUserService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public Page<AuthUser> getAuthUserList(int page, int size, AuthUserFilterDto authUserFilterDto) {
+    public Page<AuthUser> getAuthUserList(int page, int size, AuthUserFilterDto authUserFilterDto, String[] sortArray) {
+        Date minDate = getDateFromString(authUserFilterDto.getMinDate());
+        Date maxDate = getDateFromString(authUserFilterDto.getMaxDate());
         Specification<AuthUser> authUserSpecification = Specification.where(AuthUserEmailEqual(authUserFilterDto.getEmail()))
+                .and(authUserCreatedAtBetween(minDate, maxDate))
                 .and(AuthUserFirstnameEqual(authUserFilterDto.getFirstname()))
                 .and(AuthUserLastnameEqual(authUserFilterDto.getLastname()))
                 .and(AuthUserPhoneNumberEqual(authUserFilterDto.getPhoneNumber()));
-        Pageable pageable = PageRequest.of(page, size);
+
+        List<String> allowedSortProperties = Stream.of("id", "createdAt").toList();
+        List<String> allowedSortDirections = Stream.of(Sort.Direction.ASC.toString(), Sort.Direction.DESC.toString()).toList();
+        if (!sortArray[0].contains(",")) {
+            sortArray = new String[]{String.join(",", sortArray)};
+        }
+        List<Sort.Order> orderList = Arrays.stream(sortArray)
+                .filter(sort -> {
+                    String[] splitedSort = sort.split(",");
+                    if (splitedSort.length < 2) {
+                        return false;
+                    }
+                    return allowedSortProperties.contains(toCamelCase(splitedSort[0])) && allowedSortDirections.contains(splitedSort[1].toUpperCase());
+                })
+                .map(sort -> {
+                    String[] splitedSort = sort.split(",");
+                    return new Sort.Order(Sort.Direction.fromString(splitedSort[1]), toCamelCase(splitedSort[0]));
+                })
+                .toList();
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(orderList));
 
         return authUserRepository.findAll(authUserSpecification, pageable);
     }

@@ -13,7 +13,7 @@ import java.util.HashMap;
 
 public interface AuthUserService {
 
-    Page<AuthUser> getAuthUserList(int page, int size, AuthUserFilterDto AuthUserFilterDto);
+    Page<AuthUser> getAuthUserList(int page, int size, AuthUserFilterDto AuthUserFilterDto, String[] sortArray);
 
     AuthUser getAuthUserById(long id) throws AuthUserProcessingException;
 

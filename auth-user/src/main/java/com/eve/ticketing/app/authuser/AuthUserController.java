@@ -24,9 +24,10 @@ public class AuthUserController {
 
     @GetMapping("/all")
     public ResponseEntity<?> getAuthUserList(@RequestParam(value = "page") int page,
-                                                          @RequestParam(value = "size") int size,
-                                                          AuthUserFilterDto authUserFilterDto) {
-        Page<AuthUser> authUserPage = authUserService.getAuthUserList(page, size, authUserFilterDto);
+                                             @RequestParam(value = "size") int size,
+                                             @RequestParam(defaultValue = "id,desc") String[] sort,
+                                             AuthUserFilterDto authUserFilterDto) {
+        Page<AuthUser> authUserPage = authUserService.getAuthUserList(page, size, authUserFilterDto, sort);
         return new ResponseEntity<>(authUserPage, HttpStatus.OK);
     }
 

@@ -16,4 +16,8 @@ public class AuthUserFilterDto {
     private String lastname;
 
     private String phoneNumber;
+
+    private String minDate;
+
+    private String maxDate;
 }
