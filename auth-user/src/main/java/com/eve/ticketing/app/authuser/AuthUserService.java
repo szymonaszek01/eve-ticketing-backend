@@ -1,9 +1,6 @@
 package com.eve.ticketing.app.authuser;
 
-import com.eve.ticketing.app.authuser.dto.AuthUserFilterDto;
-import com.eve.ticketing.app.authuser.dto.LoginDto;
-import com.eve.ticketing.app.authuser.dto.RefreshTokenDto;
-import com.eve.ticketing.app.authuser.dto.RegisterDto;
+import com.eve.ticketing.app.authuser.dto.*;
 import com.eve.ticketing.app.authuser.exception.AuthUserProcessingException;
 import com.eve.ticketing.app.authuser.security.UserDetails;
 import jakarta.validation.ConstraintViolationException;
@@ -26,6 +23,8 @@ public interface AuthUserService {
     AuthUser registerAuthUser(RegisterDto registerDto) throws AuthUserProcessingException, ConstraintViolationException;
 
     AuthUser loginAuthUser(LoginDto loginDto) throws AuthUserProcessingException, ConstraintViolationException;
+
+    AuthUser loginAuthUserViaGoogle(LoginViaGoogleDto loginViaGoogleDto) throws AuthUserProcessingException, ConstraintViolationException;
 
     AuthUser refreshToken(RefreshTokenDto refreshTokenDto) throws AuthUserProcessingException, ConstraintViolationException;
 

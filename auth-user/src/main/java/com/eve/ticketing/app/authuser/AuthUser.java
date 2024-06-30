@@ -29,7 +29,6 @@ public class AuthUser {
     private String email;
 
     @JsonIgnore
-    @NotBlank(message = "should not be blank")
     private String password;
 
     @JsonProperty("created_at")
@@ -56,4 +55,8 @@ public class AuthUser {
     @Pattern(regexp = "USER|ADMIN", message = "should be either USER or ADMIN")
     @NotBlank(message = "should not be blank")
     private String role;
+
+    @Pattern(regexp = "LOCAL|GOOGLE", message = "should be either LOCAL or GOOGLE")
+    @NotBlank(message = "should not be blank")
+    private String authProvider;
 }

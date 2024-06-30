@@ -1,9 +1,6 @@
 package com.eve.ticketing.app.authuser;
 
-import com.eve.ticketing.app.authuser.dto.AuthUserFilterDto;
-import com.eve.ticketing.app.authuser.dto.LoginDto;
-import com.eve.ticketing.app.authuser.dto.RefreshTokenDto;
-import com.eve.ticketing.app.authuser.dto.RegisterDto;
+import com.eve.ticketing.app.authuser.dto.*;
 import com.eve.ticketing.app.authuser.exception.AuthUserProcessingException;
 import com.eve.ticketing.app.authuser.exception.Error;
 import com.eve.ticketing.app.authuser.security.JwtUtil;
@@ -32,6 +29,8 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Field;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -46,6 +45,12 @@ public class AuthUserServiceImpl implements AuthUserService {
     private static final String USER = "USER";
 
     private static final String ADMIN = "ADMIN";
+
+    private static final String LOCAL = "LOCAL";
+
+    private static final String GOOGLE = "GOOGLE";
+
+    private static final String GOOGLE_TOKEN_INFO_URL = "https://oauth2.googleapis.com/tokeninfo";
 
     private static final List<String> ADMIN_EMAIL_LIST = List.of("jan.kowalski@gmail.com");
 
@@ -211,6 +216,7 @@ public class AuthUserServiceImpl implements AuthUserService {
                 .lastname(registerDto.getLastname())
                 .phoneNumber(registerDto.getPhoneNumber())
                 .role(ADMIN_EMAIL_LIST.contains(registerDto.getEmail()) ? ADMIN : USER)
+                .authProvider(LOCAL)
                 .build();
 
         try {
@@ -222,7 +228,7 @@ public class AuthUserServiceImpl implements AuthUserService {
             throw new AuthUserProcessingException(HttpStatus.CONFLICT, error);
         }
 
-        userDetails = new UserDetails(authUser.getId(), authUser.getEmail(), authUser.getPassword(), List.of(new SimpleGrantedAuthority(USER)));
+        userDetails = new UserDetails(authUser.getId(), authUser.getEmail(), authUser.getPassword(), List.of(new SimpleGrantedAuthority(authUser.getRole())));
         authUser.setAuthToken(jwtUtil.createToken(userDetails, 3 * 60 * 60 * 1000));
         authUser.setRefreshToken(jwtUtil.createToken(userDetails, 24 * 60 * 60 * 1000));
 
@@ -243,6 +249,52 @@ public class AuthUserServiceImpl implements AuthUserService {
         authUser.setRefreshToken(jwtUtil.createToken(userDetails, 24 * 60 * 60 * 1000));
 
         return authUser;
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public AuthUser loginAuthUserViaGoogle(LoginViaGoogleDto loginViaGoogleDto) throws AuthUserProcessingException, ConstraintViolationException {
+        Error error = Error.builder().method("POST").build();
+        if (!isGoogleAccessTokenValid(loginViaGoogleDto.getAccessToken())) {
+            error.setField("access_token");
+            error.setValue(loginViaGoogleDto.getAccessToken());
+            error.setDescription("access_token is invalid");
+            log.error(error.toString());
+            throw new AuthUserProcessingException(HttpStatus.BAD_REQUEST, error);
+        }
+
+        Optional<AuthUser> authUser = authUserRepository.findByEmail(loginViaGoogleDto.getEmail());
+        if (authUser.isEmpty()) {
+            if (isPhoneNumberNotValid(loginViaGoogleDto.getPhoneNumber())) {
+                error.setField("phone_number");
+                error.setValue(loginViaGoogleDto.getPhoneNumber());
+                error.setDescription("phone number is invalid");
+                log.error(error.toString());
+                throw new AuthUserProcessingException(HttpStatus.BAD_REQUEST, error);
+            }
+            try {
+                authUser = Optional.of(authUserRepository.save(AuthUser.builder()
+                        .email(loginViaGoogleDto.getEmail())
+                        .createdAt(new Date(System.currentTimeMillis()))
+                        .firstname(loginViaGoogleDto.getFirstname())
+                        .lastname(loginViaGoogleDto.getLastname())
+                        .phoneNumber(loginViaGoogleDto.getPhoneNumber())
+                        .role(ADMIN_EMAIL_LIST.contains(loginViaGoogleDto.getEmail()) ? ADMIN : USER)
+                        .authProvider(GOOGLE)
+                        .build()));
+            } catch (DataIntegrityViolationException e) {
+                error.setField("email");
+                error.setValue(loginViaGoogleDto.getEmail());
+                error.setDescription("email already in use");
+                throw new AuthUserProcessingException(HttpStatus.CONFLICT, error);
+            }
+        }
+
+        UserDetails userDetails = new UserDetails(authUser.get().getId(), authUser.get().getEmail(), authUser.get().getPassword(), List.of(new SimpleGrantedAuthority(authUser.get().getRole())));
+        authUser.get().setAuthToken(jwtUtil.createToken(userDetails, 3 * 60 * 60 * 1000));
+        authUser.get().setRefreshToken(jwtUtil.createToken(userDetails, 24 * 60 * 60 * 1000));
+
+        return authUser.get();
     }
 
     @Override
@@ -297,6 +349,19 @@ public class AuthUserServiceImpl implements AuthUserService {
             return (UserDetails) authentication.getPrincipal();
         } catch (BadCredentialsException e) {
             return null;
+        }
+    }
+
+    private boolean isGoogleAccessTokenValid(String accessToken) {
+        try {
+            URL url = new URL(GOOGLE_TOKEN_INFO_URL + "?access_token=" + accessToken);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            log.info("Google access token {} valid", accessToken);
+            return true;
+        } catch (Exception e) {
+            log.error(e.getMessage());
+            return false;
         }
     }
 }

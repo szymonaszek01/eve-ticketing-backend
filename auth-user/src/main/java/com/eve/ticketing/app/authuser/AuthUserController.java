@@ -1,9 +1,6 @@
 package com.eve.ticketing.app.authuser;
 
-import com.eve.ticketing.app.authuser.dto.AuthUserFilterDto;
-import com.eve.ticketing.app.authuser.dto.LoginDto;
-import com.eve.ticketing.app.authuser.dto.RefreshTokenDto;
-import com.eve.ticketing.app.authuser.dto.RegisterDto;
+import com.eve.ticketing.app.authuser.dto.*;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -58,6 +55,12 @@ public class AuthUserController {
     @PostMapping("/login")
     public ResponseEntity<?> loginAuthUser(@Valid @RequestBody LoginDto loginDto) {
         AuthUser authUser = authUserService.loginAuthUser(loginDto);
+        return new ResponseEntity<>(authUser, HttpStatus.OK);
+    }
+
+    @PostMapping("/login/code/google")
+    public ResponseEntity<?> loginAuthUserViaGoogle(@Valid @RequestBody LoginViaGoogleDto loginViaGoogleDto) {
+        AuthUser authUser = authUserService.loginAuthUserViaGoogle(loginViaGoogleDto);
         return new ResponseEntity<>(authUser, HttpStatus.OK);
     }
 

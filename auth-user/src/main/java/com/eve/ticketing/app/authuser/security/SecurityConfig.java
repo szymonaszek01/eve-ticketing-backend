@@ -28,6 +28,7 @@ public class SecurityConfig {
             "/swagger-ui/**",
             "/error",
             "/api/v1/auth-user/login",
+            "/api/v1/auth-user/login/code/google",
             "/api/v1/auth-user/register",
             "/api/v1/auth-user/validate-token/{token}",
             "/api/v1/auth-user/refresh-token"
