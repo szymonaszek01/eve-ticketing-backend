@@ -28,6 +28,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -357,8 +359,22 @@ public class AuthUserServiceImpl implements AuthUserService {
             URL url = new URL(GOOGLE_TOKEN_INFO_URL + "?access_token=" + accessToken);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
-            log.info("Google access token {} valid", accessToken);
-            return true;
+            BufferedReader bufferedReader;
+            int responseCode = connection.getResponseCode();
+            if (responseCode == 200) {
+                log.info("Google access token {} is valid", accessToken);
+                bufferedReader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            } else {
+                log.info("Google access token {} is not valid", accessToken);
+                bufferedReader = new BufferedReader(new InputStreamReader(connection.getErrorStream()));
+            }
+            String currentLine;
+            StringBuilder body = new StringBuilder();
+            while ((currentLine = bufferedReader.readLine()) != null) {
+                body.append(currentLine);
+            }
+            log.info("Google account data {} associated with provided token.", body);
+            return responseCode == 200;
         } catch (Exception e) {
             log.error(e.getMessage());
             return false;
