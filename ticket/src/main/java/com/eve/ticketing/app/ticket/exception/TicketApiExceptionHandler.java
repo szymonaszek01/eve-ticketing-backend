@@ -59,7 +59,7 @@ public class TicketApiExceptionHandler {
     }
 
     @ExceptionHandler({TicketProcessingException.class})
-    public ResponseEntity<Object> handleEventProcessingException(TicketProcessingException e) {
+    public ResponseEntity<Object> handleTicketProcessingException(TicketProcessingException e) {
         List<Error> errors = List.of(e.getError());
 
         TicketApiException ticketApiException = TicketApiException.builder()

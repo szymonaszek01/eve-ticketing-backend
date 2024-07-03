@@ -16,6 +16,7 @@
         <module>sms-notification</module>
         <module>cloud-gateway</module>
         <module>auth-user</module>
+        <module>firebase</module>
     </modules>
 
 	<name>microservices</name>

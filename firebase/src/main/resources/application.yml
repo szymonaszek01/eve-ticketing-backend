@@ -1,0 +1,13 @@
+server:
+    port: 8086
+spring:
+    application:
+        name: firebase
+    kafka:
+        bootstrap-servers: localhost:9092
+eureka:
+    client:
+        service-url:
+            defaultZone: ${EUREKA_SERVER}
+        fetch-registry: true
+        register-with-eureka: true
