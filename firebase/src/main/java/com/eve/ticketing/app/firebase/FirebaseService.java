@@ -6,5 +6,5 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface FirebaseService {
 
-    FirebaseDto upload(MultipartFile file) throws FirebaseProcessingException;
+    FirebaseDto upload(MultipartFile file, String token) throws FirebaseProcessingException;
 }

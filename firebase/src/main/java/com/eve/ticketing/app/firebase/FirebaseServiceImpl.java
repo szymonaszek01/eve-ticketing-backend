@@ -1,6 +1,7 @@
 package com.eve.ticketing.app.firebase;
 
 import com.eve.ticketing.app.firebase.dto.FirebaseDto;
+import com.eve.ticketing.app.firebase.dto.UserDto;
 import com.eve.ticketing.app.firebase.exception.Error;
 import com.eve.ticketing.app.firebase.exception.FirebaseProcessingException;
 import com.google.auth.Credentials;
@@ -9,10 +10,16 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
@@ -22,18 +29,18 @@ import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.UUID;
 
 @Slf4j
 @Service
+@AllArgsConstructor
 public class FirebaseServiceImpl implements FirebaseService {
 
-    // 1) https://medium.com/@poojithairosha/image-uploading-with-spring-boot-firebase-cloud-storage-e5ef2fbf942d
-
-    // 2) https://medium.com/teamarimac/file-upload-and-download-with-spring-boot-firebase-af068bc62614
+    private RestTemplate restTemplate;
 
     @Override
-    public FirebaseDto upload(MultipartFile multipartFile) throws FirebaseProcessingException {
+    public FirebaseDto upload(MultipartFile multipartFile, String token) throws FirebaseProcessingException {
         Error error = Error.builder().method("POST").build();
         try {
             String filename = updateFilename(multipartFile.getOriginalFilename(), error);
@@ -47,7 +54,11 @@ public class FirebaseServiceImpl implements FirebaseService {
                 log.error(error.toString());
                 throw new FirebaseProcessingException(HttpStatus.INTERNAL_SERVER_ERROR, error);
             }
-            return FirebaseDto.builder().filename(filename).link(getLink(filename)).build();
+            String link = getLink(filename);
+            HashMap<String, Object> values = new HashMap<>(1);
+            values.put("image", link);
+            updateAuthUser(values, token);
+            return FirebaseDto.builder().filename(filename).link(link).build();
         } catch (Exception e) {
             log.error(e.getMessage());
             error.setDescription("image could not be uploaded");
@@ -93,5 +104,29 @@ public class FirebaseServiceImpl implements FirebaseService {
             fos.write(multipartFile.getBytes());
         }
         return tempFile;
+    }
+
+    private void updateAuthUser(HashMap<String, Object> values, String token) throws FirebaseProcessingException {
+        Error error = Error.builder().method("POST").field("token").value(token).build();
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", token);
+            UserDto userDto = restTemplate.exchange(
+                    "http://AUTH-USER/api/v1/auth-user/update",
+                    HttpMethod.PUT,
+                    new HttpEntity<>(values, headers),
+                    UserDto.class
+            ).getBody();
+            if (userDto == null) {
+                error.setDescription("user not found with provided token");
+                log.error(error.toString());
+                throw new FirebaseProcessingException(HttpStatus.BAD_REQUEST, error);
+            }
+            log.info("image updated successfully in user account: (id: {}, email: {})", userDto.getId(), userDto.getEmail());
+        } catch (RestClientException e) {
+            error.setDescription("unable to communicate with auth user server");
+            log.error(error.toString());
+            throw new FirebaseProcessingException(HttpStatus.BAD_REQUEST, error);
+        }
     }
 }
