@@ -59,4 +59,6 @@ public class AuthUser {
     @Pattern(regexp = "LOCAL|GOOGLE", message = "should be either LOCAL or GOOGLE")
     @NotBlank(message = "should not be blank")
     private String authProvider;
+
+    private String image;
 }

@@ -23,6 +23,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -126,6 +127,10 @@ public class AuthUserServiceImpl implements AuthUserService {
             error.setDescription("empty values");
             log.error(error.toString());
             throw new AuthUserProcessingException(HttpStatus.BAD_REQUEST, error);
+        }
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetails userDetails) {
+            values.put("id", userDetails.getId());
         }
         if (values.get("id") == null || !(values.get("id") instanceof Number)) {
             error.setField("id");
