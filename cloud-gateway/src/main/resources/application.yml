@@ -35,6 +35,12 @@ spring:
                     uri: lb://AUTH-USER
                     predicates:
                         - Path=/api/v1/auth-user/**
+
+                -   id: firebase
+                    uri: lb://FIREBASE
+                    predicates:
+                        - Path=/api/v1/firebase/**
+                    filters: AuthenticationFilter
             globalcors:
                 corsConfigurations:
                     '[/**]':

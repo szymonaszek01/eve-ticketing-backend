@@ -42,6 +42,10 @@ public class RouteValidator {
             Route.builder().method("DELETE").path("/api/v1/sms-notification/id/").roleList(List.of(ADMIN)).build()
     );
 
+    private static final List<Route> SECURED_FIREBASE_API = List.of(
+            Route.builder().method("POST").path("/api/v1/firebase/upload").roleList(List.of(USER, ADMIN)).build()
+    );
+
     public boolean isSecured(ServerHttpRequest request) {
         List<Route> securedApi = getSecuredApiList();
         String method = request.getMethod().toString().toUpperCase();
@@ -63,6 +67,7 @@ public class RouteValidator {
         securedApi.addAll(SECURED_SEAT_API);
         securedApi.addAll(SECURED_TICKET_API);
         securedApi.addAll(SECURED_SMS_NOTIFICATION_API);
+        securedApi.addAll(SECURED_FIREBASE_API);
         return securedApi;
     }
 }

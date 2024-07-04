@@ -40,7 +40,8 @@ public class CloudGatewayApiExceptionHandler extends AbstractErrorWebExceptionHa
             error = ((CloudGatewayProcessingException) getError(request)).getError();
             status = ((CloudGatewayProcessingException) getError(request)).getStatus().value();
         } else {
-            error.setDescription(errorAttributes.get("message").toString());
+            String message = (String) errorAttributes.get("message");
+            error.setDescription(message != null ? message : "");
         }
 
         CloudGatewayApiException cloudGatewayApiException = CloudGatewayApiException.builder()
