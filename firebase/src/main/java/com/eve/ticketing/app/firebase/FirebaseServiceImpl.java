@@ -1,7 +1,6 @@
 package com.eve.ticketing.app.firebase;
 
 import com.eve.ticketing.app.firebase.dto.FirebaseDto;
-import com.eve.ticketing.app.firebase.dto.UserDto;
 import com.eve.ticketing.app.firebase.exception.Error;
 import com.eve.ticketing.app.firebase.exception.FirebaseProcessingException;
 import com.google.auth.Credentials;
@@ -13,12 +12,12 @@ import com.google.cloud.storage.StorageOptions;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -40,13 +39,14 @@ public class FirebaseServiceImpl implements FirebaseService {
     private RestTemplate restTemplate;
 
     @Override
-    public FirebaseDto upload(MultipartFile multipartFile, String token) throws FirebaseProcessingException {
+    public FirebaseDto upload(MultipartFile multipartFile, String entity, String field, String token) throws FirebaseProcessingException {
         Error error = Error.builder().method("POST").build();
         try {
             String filename = updateFilename(multipartFile.getOriginalFilename(), error);
             File file = convertToFile(multipartFile, filename);
             Storage storage = getStorageService();
-            storage.create(BlobInfo.newBuilder(getBlobId(filename)).setContentType("media").build(), Files.readAllBytes(file.toPath()));
+            BlobId blobId = getBlobId(filename);
+            storage.create(BlobInfo.newBuilder(blobId).setContentType("media").build(), Files.readAllBytes(file.toPath()));
             if (!file.delete()) {
                 error.setField("file");
                 error.setValue(filename);
@@ -56,8 +56,8 @@ public class FirebaseServiceImpl implements FirebaseService {
             }
             String link = getLink(filename);
             HashMap<String, Object> values = new HashMap<>(1);
-            values.put("image", link);
-            updateAuthUser(values, token);
+            values.put(field, link);
+            updateEntity(values, entity, token, storage, blobId);
             return FirebaseDto.builder().filename(filename).link(link).build();
         } catch (Exception e) {
             log.error(e.getMessage());
@@ -106,27 +106,42 @@ public class FirebaseServiceImpl implements FirebaseService {
         return tempFile;
     }
 
-    private void updateAuthUser(HashMap<String, Object> values, String token) throws FirebaseProcessingException {
+    private void updateEntity(HashMap<String, Object> values, String entity, String token, Storage storage, BlobId blobId) throws FirebaseProcessingException {
         Error error = Error.builder().method("POST").field("token").value(token).build();
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", token);
-            UserDto userDto = restTemplate.exchange(
-                    "http://AUTH-USER/api/v1/auth-user/update",
+            ParameterizedTypeReference<HashMap<String, Object>> responseType = new ParameterizedTypeReference<>() {
+            };
+            HashMap<String, Object> response = restTemplate.exchange(
+                    "http://" + entity.toUpperCase() + "/api/v1/" + entity.toLowerCase() + "/update",
                     HttpMethod.PUT,
                     new HttpEntity<>(values, headers),
-                    UserDto.class
+                    responseType
             ).getBody();
-            if (userDto == null) {
-                error.setDescription("user not found with provided token");
-                log.error(error.toString());
-                throw new FirebaseProcessingException(HttpStatus.BAD_REQUEST, error);
-            }
-            log.info("image updated successfully in user account: (id: {}, email: {})", userDto.getId(), userDto.getEmail());
-        } catch (RestClientException e) {
+            log.info("image updated successfully in {} (id = {})", entity, getIdFromObject(response, error, storage, blobId));
+        } catch (Exception e) {
             error.setDescription("unable to communicate with auth user server");
+            storage.delete(blobId);
             log.error(error.toString());
             throw new FirebaseProcessingException(HttpStatus.BAD_REQUEST, error);
         }
+    }
+
+    private Number getIdFromObject(HashMap<String, Object> hashMap, Error error, Storage storage, BlobId blobId) throws FirebaseProcessingException {
+        if (hashMap == null) {
+            error.setDescription("field does not exists");
+            storage.delete(blobId);
+            log.error(error.toString());
+            throw new FirebaseProcessingException(HttpStatus.BAD_REQUEST, error);
+        }
+        Number id = (Number) hashMap.get("id");
+        if (id == null) {
+            error.setDescription("entity not found with provided token");
+            storage.delete(blobId);
+            log.error(error.toString());
+            throw new FirebaseProcessingException(HttpStatus.BAD_REQUEST, error);
+        }
+        return id;
     }
 }
