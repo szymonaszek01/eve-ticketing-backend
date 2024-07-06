@@ -46,6 +46,12 @@ public class AuthUserController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
+    @GetMapping("/field/{field}")
+    public ResponseEntity<?> getAuthUserField(@PathVariable String field) {
+        HashMap<String, Object> authUserField = authUserService.getAuthUserField(field);
+        return new ResponseEntity<>(authUserField, HttpStatus.OK);
+    }
+
     @PostMapping("/register")
     public ResponseEntity<?> registerAuthUser(@Valid @RequestBody RegisterDto registerDto) {
         AuthUser authUser = authUserService.registerAuthUser(registerDto);

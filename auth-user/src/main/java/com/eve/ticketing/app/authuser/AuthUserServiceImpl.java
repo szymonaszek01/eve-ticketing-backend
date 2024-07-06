@@ -196,6 +196,38 @@ public class AuthUserServiceImpl implements AuthUserService {
     }
 
     @Override
+    public HashMap<String, Object> getAuthUserField(String fieldName) throws AuthUserProcessingException {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long id = 0L;
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetails userDetails) {
+            id = userDetails.getId();
+        }
+        AuthUser authUser = getAuthUserById(id);
+        Error error = Error.builder().method("GET").field(fieldName).build();
+        String convertedKey = toCamelCase(fieldName);
+        try {
+            Field field = authUser.getClass().getDeclaredField(convertedKey);
+            field.setAccessible(true);
+            HashMap<String, Object> response = new HashMap<>(3);
+            response.put("id", id);
+            response.put("key", fieldName);
+            response.put("value", field.get(authUser));
+            return response;
+        } catch (NullPointerException e) {
+            error.setDescription("field can not be null");
+            log.error(error.toString());
+        } catch (NoSuchFieldException e) {
+            error.setDescription("field does not exists");
+            log.error(error.toString());
+        } catch (IllegalAccessException e) {
+            error.setDescription("illegal access to field");
+            log.error(error.toString());
+        }
+        log.error(error.toString());
+        throw new AuthUserProcessingException(HttpStatus.BAD_REQUEST, error);
+    }
+
+    @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public AuthUser registerAuthUser(RegisterDto registerDto) throws AuthUserProcessingException, ConstraintViolationException {
         Error error = Error.builder().method("POST").build();

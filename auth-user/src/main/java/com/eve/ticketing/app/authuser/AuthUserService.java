@@ -18,6 +18,8 @@ public interface AuthUserService {
 
     void deleteAuthUserById(long id) throws AuthUserProcessingException;
 
+    HashMap<String, Object> getAuthUserField(String fieldName) throws AuthUserProcessingException;
+
     AuthUser getAuthUserByEmail(String email) throws AuthUserProcessingException;
 
     AuthUser registerAuthUser(RegisterDto registerDto) throws AuthUserProcessingException, ConstraintViolationException;
