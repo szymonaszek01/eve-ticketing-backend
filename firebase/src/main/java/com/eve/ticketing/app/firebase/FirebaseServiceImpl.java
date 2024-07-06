@@ -1,14 +1,12 @@
 package com.eve.ticketing.app.firebase;
 
+import com.eve.ticketing.app.firebase.dto.EntityFieldDto;
 import com.eve.ticketing.app.firebase.dto.FirebaseDto;
 import com.eve.ticketing.app.firebase.exception.Error;
 import com.eve.ticketing.app.firebase.exception.FirebaseProcessingException;
 import com.google.auth.Credentials;
 import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
+import com.google.cloud.storage.*;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
@@ -46,6 +44,7 @@ public class FirebaseServiceImpl implements FirebaseService {
             File file = convertToFile(multipartFile, filename);
             Storage storage = getStorageService();
             BlobId blobId = getBlobId(filename);
+            removePreviousFileFromStorageIfExists(storage, token, entity, field);
             storage.create(BlobInfo.newBuilder(blobId).setContentType("media").build(), Files.readAllBytes(file.toPath()));
             if (!file.delete()) {
                 error.setField("file");
@@ -68,6 +67,10 @@ public class FirebaseServiceImpl implements FirebaseService {
 
     private String getExtension(String fileName) {
         return fileName.substring(fileName.lastIndexOf("."));
+    }
+
+    private Blob getBlob(Storage storage, String filePath) {
+        return storage.get("eve-ticketing-app.appspot.com", filePath);
     }
 
     private BlobId getBlobId(String filename) {
@@ -119,10 +122,30 @@ public class FirebaseServiceImpl implements FirebaseService {
                     new HttpEntity<>(values, headers),
                     responseType
             ).getBody();
-            log.info("image updated successfully in {} (id = {})", entity, getIdFromObject(response, error, storage, blobId));
+            log.info("image updated successfully in {} (id={})", entity, getIdFromObject(response, error, storage, blobId));
         } catch (Exception e) {
             error.setDescription("unable to communicate with auth user server");
             storage.delete(blobId);
+            log.error(error.toString());
+            throw new FirebaseProcessingException(HttpStatus.BAD_REQUEST, error);
+        }
+    }
+
+    private EntityFieldDto<String> getEntityPreviousImageLink(String token, String entity, String field) throws FirebaseProcessingException {
+        Error error = Error.builder().method("POST").field("token").value(token).build();
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", token);
+            ParameterizedTypeReference<EntityFieldDto<String>> responseType = new ParameterizedTypeReference<>() {
+            };
+            return restTemplate.exchange(
+                    "http://" + entity.toUpperCase() + "/api/v1/" + entity.toLowerCase() + "/field/" + field,
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    responseType
+            ).getBody();
+        } catch (Exception e) {
+            error.setDescription("unable to communicate with auth user server");
             log.error(error.toString());
             throw new FirebaseProcessingException(HttpStatus.BAD_REQUEST, error);
         }
@@ -143,5 +166,19 @@ public class FirebaseServiceImpl implements FirebaseService {
             throw new FirebaseProcessingException(HttpStatus.BAD_REQUEST, error);
         }
         return id;
+    }
+
+    private void removePreviousFileFromStorageIfExists(Storage storage, String token, String entity, String field) throws FirebaseProcessingException {
+        EntityFieldDto<String> entityFieldDto = getEntityPreviousImageLink(token, entity, field);
+        if (entityFieldDto.getId() != null && StringUtils.isBlank(entityFieldDto.getValue())) {
+            return;
+        }
+        String filePath = entityFieldDto.getValue().substring(entityFieldDto.getValue().indexOf("/o/") + 3, entityFieldDto.getValue().indexOf("?alt="));
+        filePath = filePath.replace("%2F", "/");
+        Blob blob = getBlob(storage, filePath);
+        if (blob != null) {
+            blob.delete();
+            log.info("image ({}) associated with entity (id={}) removed successfully from firebase storage", filePath, entityFieldDto.getId());
+        }
     }
 }
