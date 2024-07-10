@@ -10,7 +10,7 @@ import java.util.HashMap;
 
 public interface TicketService {
 
-    Page<Ticket> getTicketList(int page, int size, TicketFilterDto ticketFilterDto);
+    Page<Ticket> getTicketList(int page, int size, TicketFilterDto ticketFilterDto, String[] sortArray, String token);
 
     Ticket getTicketById(long id) throws TicketProcessingException;
 

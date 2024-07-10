@@ -20,4 +20,16 @@ public class TicketFilterDto {
     private Double minCost;
 
     private Double maxCost;
+
+    private String minDate;
+
+    private String maxDate;
+
+    private Long userId;
+
+    private Long eventId;
+
+    private Long seatId;
+
+    private Boolean paid;
 }

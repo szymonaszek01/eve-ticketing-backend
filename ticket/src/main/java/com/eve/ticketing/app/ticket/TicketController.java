@@ -22,9 +22,11 @@ public class TicketController {
 
     @GetMapping("/all")
     public ResponseEntity<?> getTicketList(@RequestParam(value = "page") int page,
-                                                      @RequestParam(value = "size") int size,
-                                                      TicketFilterDto ticketFilterDto) {
-        Page<Ticket> ticketPage = ticketService.getTicketList(page, size, ticketFilterDto);
+                                           @RequestParam(value = "size") int size,
+                                           @RequestParam(defaultValue = "id,desc") String[] sort,
+                                           @RequestHeader("Authorization") String token,
+                                           TicketFilterDto ticketFilterDto) {
+        Page<Ticket> ticketPage = ticketService.getTicketList(page, size, ticketFilterDto, sort, token);
         return new ResponseEntity<>(ticketPage, HttpStatus.OK);
     }
 

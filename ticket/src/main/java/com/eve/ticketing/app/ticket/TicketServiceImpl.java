@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -43,13 +44,53 @@ public class TicketServiceImpl implements TicketService {
     private final KafkaNotificationProducer kafkaNotificationProducer;
 
     @Override
-    public Page<Ticket> getTicketList(int page, int size, TicketFilterDto ticketFilterDto) {
+    public Page<Ticket> getTicketList(int page, int size, TicketFilterDto ticketFilterDto, String[] sortArray, String token) {
+        final UserDto userDto;
+        try {
+            userDto = validateToken(token);
+            if (!"ADMIN".equalsIgnoreCase(userDto.getRole()) && !userDto.getId().equals(ticketFilterDto.getUserId())) {
+                ticketFilterDto.setUserId(userDto.getId());
+            }
+        } catch (TicketProcessingException e) {
+            return Page.empty();
+        }
+
+        Date minDate = TicketUtil.getDateFromString(ticketFilterDto.getMinDate());
+        Date maxDate = TicketUtil.getDateFromString(ticketFilterDto.getMaxDate());
         Specification<Ticket> ticketSpecification = Specification.where(ticketCodeEqual(ticketFilterDto.getCode()))
                 .and(ticketFirstnameEqual(ticketFilterDto.getFirstname()))
                 .and(ticketLastnameEqual(ticketFilterDto.getLastname()))
                 .and(ticketPhoneNumberEqual(ticketFilterDto.getPhoneNumber()))
-                .and(ticketCostBetween(ticketFilterDto.getMinCost(), ticketFilterDto.getMaxCost()));
-        Pageable pageable = PageRequest.of(page, size);
+                .and(ticketCostBetween(ticketFilterDto.getMinCost(), ticketFilterDto.getMaxCost()))
+                .and(ticketCreatedAtBetween(minDate, maxDate))
+                .and(ticketUserIdEqual(userDto.getId()))
+                .and(ticketEventIdEqual(ticketFilterDto.getEventId()))
+                .and(ticketSeatIdEqual(ticketFilterDto.getSeatId()))
+                .and(ticketPaidEqual(ticketFilterDto.getPaid()));
+
+        List<String> allowedSortProperties = Stream.of("id", "createdAt", "cost", "maxTicketAmount", "userId", "eventId", "seatId").toList();
+        List<String> allowedSortDirections = Stream.of(Sort.Direction.ASC.toString(), Sort.Direction.DESC.toString()).toList();
+        if (!sortArray[0].contains(",")) {
+            sortArray = new String[]{String.join(",", sortArray)};
+        }
+        List<Sort.Order> orderList = Arrays.stream(sortArray)
+                .filter(sort -> {
+                    String[] splitedSort = sort.split(",");
+                    if (splitedSort.length < 2) {
+                        return false;
+                    }
+                    if (!"ADMIN".equalsIgnoreCase(userDto.getRole()) && "userId".equals(toCamelCase(splitedSort[0]))) {
+                        return false;
+                    }
+                    return allowedSortProperties.contains(toCamelCase(splitedSort[0])) && allowedSortDirections.contains(splitedSort[1].toUpperCase());
+                })
+                .map(sort -> {
+                    String[] splitedSort = sort.split(",");
+                    return new Sort.Order(Sort.Direction.fromString(splitedSort[1]), toCamelCase(splitedSort[0]));
+                })
+                .toList();
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(orderList));
 
         return ticketRepository.findAll(ticketSpecification, pageable);
     }
@@ -73,7 +114,7 @@ public class TicketServiceImpl implements TicketService {
                 throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
             }
 
-            UserDto userDto = getUser(ticketDto.getUserId(), token);
+            UserDto userDto = validateToken(token);
             EventDto eventDto = getEvent(ticketDto.getEventId());
             Ticket ticket = Ticket.builder()
                     .code(UUID.randomUUID().toString())
@@ -256,19 +297,19 @@ public class TicketServiceImpl implements TicketService {
                 .build());
     }
 
-    private UserDto getUser(long userId, String token) throws TicketProcessingException {
+    private UserDto validateToken(String token) throws TicketProcessingException {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", token);
             return restTemplate.exchange(
-                    "http://AUTH-USER/api/v1/auth-user/id/{id}",
+                    "http://AUTH-USER/api/v1/auth-user/validate-token/{token}",
                     HttpMethod.GET,
                     new HttpEntity<>(headers),
                     UserDto.class,
-                    userId
+                    token
             ).getBody();
         } catch (RestClientException e) {
-            Error error = Error.builder().method("").field("user_id").value(userId).description("unable to communicate with auth user server").build();
+            Error error = Error.builder().method("").field("token").value(token).description("unable to communicate with auth user server").build();
             log.error(error.toString());
             throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
         }
