@@ -176,7 +176,7 @@ public class TicketServiceImpl implements TicketService {
         }
 
         Ticket ticket = getTicketById(((Number) values.remove("id")).longValue());
-        Stream.of("code", "createdAt", "cost", "eventId", "user_id").forEach(values::remove);
+        Stream.of("code", "created_at", "cost", "event_id", "user_id").forEach(values::remove);
         EventDto eventDto = getEvent(ticket.getId());
         Set<String> updatedFields = new HashSet<>();
         values.forEach((key, value) -> {
@@ -222,6 +222,7 @@ public class TicketServiceImpl implements TicketService {
             }
         });
 
+        // TODO Fix updating ticket cost, based on discounts from request
         if (updatedFields.contains("isAdult") || updatedFields.contains("isStudent")) {
             if (!Boolean.TRUE.equals(ticket.getIsAdult()) && ticket.getIsStudent()) {
                 ticket.setIsStudent(false);
@@ -306,7 +307,7 @@ public class TicketServiceImpl implements TicketService {
                     HttpMethod.GET,
                     new HttpEntity<>(headers),
                     UserDto.class,
-                    token
+                    token.substring(7)
             ).getBody();
         } catch (RestClientException e) {
             Error error = Error.builder().method("").field("token").value(token).description("unable to communicate with auth user server").build();
