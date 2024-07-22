@@ -27,6 +27,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -222,7 +223,6 @@ public class TicketServiceImpl implements TicketService {
             }
         });
 
-        // TODO Fix updating ticket cost, based on discounts from request
         if (updatedFields.contains("isAdult") || updatedFields.contains("isStudent")) {
             if (!Boolean.TRUE.equals(ticket.getIsAdult()) && ticket.getIsStudent()) {
                 ticket.setIsStudent(false);
@@ -275,10 +275,10 @@ public class TicketServiceImpl implements TicketService {
 
     private BigDecimal getTicketCost(EventDto eventDto, boolean isAdult, boolean isStudent) throws TicketProcessingException {
         if (!isAdult && eventDto.getChildrenDiscount() != null) {
-            return eventDto.getUnitPrice().multiply(BigDecimal.ONE.subtract(eventDto.getChildrenDiscount()));
+            return eventDto.getUnitPrice().multiply(BigDecimal.ONE.subtract(eventDto.getChildrenDiscount().divide(BigDecimal.valueOf(100), 2, RoundingMode.DOWN)));
         }
         if (isAdult && isStudent && eventDto.getStudentsDiscount() != null) {
-            return eventDto.getUnitPrice().multiply(BigDecimal.ONE.subtract(eventDto.getStudentsDiscount()));
+            return eventDto.getUnitPrice().multiply(BigDecimal.ONE.subtract(eventDto.getStudentsDiscount().divide(BigDecimal.valueOf(100), 2, RoundingMode.DOWN)));
         }
         if (isAdult) {
             return eventDto.getUnitPrice();
