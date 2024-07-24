@@ -19,4 +19,6 @@ public interface TicketService {
     Ticket updateTicket(HashMap<String, Object> values) throws TicketProcessingException, ConstraintViolationException;
 
     void deleteTicketById(long id) throws TicketProcessingException;
+
+    void payForTicketList(HashMap<String, Object> values, String token) throws TicketProcessingException;
 }

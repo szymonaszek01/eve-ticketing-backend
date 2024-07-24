@@ -25,7 +25,8 @@ public class RouteValidator {
             Route.builder().method("GET").path("/api/v1/ticket/id/").roleList(List.of(USER, ADMIN)).build(),
             Route.builder().method("POST").path("/api/v1/ticket/create").roleList(List.of(USER, ADMIN)).build(),
             Route.builder().method("PUT").path("/api/v1/ticket/update").roleList(List.of(USER, ADMIN)).build(),
-            Route.builder().method("DELETE").path("/api/v1/ticket/id/").roleList(List.of(USER, ADMIN)).build()
+            Route.builder().method("DELETE").path("/api/v1/ticket/id/").roleList(List.of(USER, ADMIN)).build(),
+            Route.builder().method("PUT").path("/api/v1/ticket/pay").roleList(List.of(USER, ADMIN)).build()
     );
 
     private static final List<Route> SECURED_SEAT_API = List.of(

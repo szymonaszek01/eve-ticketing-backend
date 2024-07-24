@@ -269,6 +269,42 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
+    @Override
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    public void payForTicketList(HashMap<String, Object> values, String token) throws TicketProcessingException {
+        List<Number> ids = new ArrayList<>();
+        if (values.containsKey("id")) {
+            ids.add((Number) values.get("id"));
+        }
+        if (values.containsKey("ids")) {
+            ids.addAll((List<Number>) values.get("ids"));
+        }
+        ids = ids.stream().filter(Objects::nonNull).toList();
+        Error error = Error.builder().method("PUT").build();
+        if (ids.isEmpty()) {
+            error.setField("body");
+            error.setValue(values);
+            error.setDescription("empty ticket id list");
+        }
+        List<Ticket> ticketList = ticketRepository.findAllById(ids.stream().map(Number::longValue).toList());
+        if (ticketList.size() != ids.size()) {
+            error.setField("ids");
+            error.setValue(ids);
+            error.setDescription("not all tickets with provided ids found");
+        }
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeZone(TimeZone.getTimeZone("UTC"));
+        calendar.add(Calendar.MINUTE, -10);
+        List<Ticket> filteredTicketList = ticketList.stream().filter(ticket -> ticket.getCreatedAt().after(calendar.getTime())).toList();
+        if (filteredTicketList.size() != ids.size()) {
+            error.setField("ids");
+            error.setValue(ids);
+            error.setDescription("some tickets with provided ids are expired");
+        }
+        filteredTicketList.forEach(ticket -> ticket.setPaid(true));
+        ticketRepository.flush();
+    }
+
     public List<Ticket> getTicketListByPaidIsFalseAndCreatedAt(Date createdAt) {
         return ticketRepository.findAllByPaidIsFalseAndCreatedAt(createdAt);
     }
