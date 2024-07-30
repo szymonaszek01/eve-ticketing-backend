@@ -41,6 +41,12 @@ spring:
                     predicates:
                         - Path=/api/v1/firebase/**
                     filters: AuthenticationFilter
+
+                -   id: pdf
+                    uri: lb://PDF
+                    predicates:
+                        - Path=/api/v1/pdf/**
+                    filters: AuthenticationFilter
             globalcors:
                 corsConfigurations:
                     '[/**]':

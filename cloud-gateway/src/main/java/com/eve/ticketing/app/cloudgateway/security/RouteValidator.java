@@ -47,6 +47,10 @@ public class RouteValidator {
             Route.builder().method("POST").path("/api/v1/firebase/upload").roleList(List.of(USER, ADMIN)).build()
     );
 
+    private static final List<Route> SECURED_PDF_API = List.of(
+            Route.builder().method("POST").path("/api/v1/pdf/create").roleList(List.of(USER, ADMIN)).build()
+    );
+
     public boolean isSecured(ServerHttpRequest request) {
         List<Route> securedApi = getSecuredApiList();
         String method = request.getMethod().toString().toUpperCase();
@@ -69,6 +73,7 @@ public class RouteValidator {
         securedApi.addAll(SECURED_TICKET_API);
         securedApi.addAll(SECURED_SMS_NOTIFICATION_API);
         securedApi.addAll(SECURED_FIREBASE_API);
+        securedApi.addAll(SECURED_PDF_API);
         return securedApi;
     }
 }

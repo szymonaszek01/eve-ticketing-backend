@@ -17,6 +17,7 @@
         <module>cloud-gateway</module>
         <module>auth-user</module>
         <module>firebase</module>
+        <module>pdf</module>
     </modules>
 
 	<name>microservices</name>
