@@ -43,8 +43,8 @@ public class TicketController {
     }
 
     @PutMapping("/update")
-    public ResponseEntity<?> updateTicket(@RequestBody HashMap<String, Object> values) {
-        Ticket ticket = ticketService.updateTicket(values);
+    public ResponseEntity<?> updateTicket(@RequestBody HashMap<String, Object> values, @RequestHeader("Authorization") String token) {
+        Ticket ticket = ticketService.updateTicket(values, token);
         return new ResponseEntity<>(ticket, HttpStatus.OK);
     }
 
@@ -52,6 +52,12 @@ public class TicketController {
     public ResponseEntity<?> deleteTicketById(@PathVariable long id) {
         ticketService.deleteTicketById(id);
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @GetMapping("/id/{id}/field/{field}")
+    public ResponseEntity<?> getTicketField(@PathVariable long id, @PathVariable String field, @RequestHeader("Authorization") String token) {
+        HashMap<String, Object> ticketField = ticketService.getTicketField(id, field, token);
+        return new ResponseEntity<>(ticketField, HttpStatus.OK);
     }
 
     @PutMapping("/pay")

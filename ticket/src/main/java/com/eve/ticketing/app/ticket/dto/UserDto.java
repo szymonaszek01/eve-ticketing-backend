@@ -20,6 +20,12 @@ public class UserDto {
     @NotBlank(message = "should not be blank")
     private String email;
 
+    @NotBlank(message = "should not be blank")
+    private String firstname;
+
+    @NotBlank(message = "should not be blank")
+    private String lastname;
+
     @JsonProperty("phone_number")
     @NotBlank(message = "should not be blank")
     private String phoneNumber;

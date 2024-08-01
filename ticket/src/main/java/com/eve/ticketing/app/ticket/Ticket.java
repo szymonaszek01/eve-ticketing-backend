@@ -69,4 +69,6 @@ public class Ticket {
 
     @NotNull(message = "should not be null")
     private Boolean paid;
+
+    private String pdf;
 }

@@ -16,9 +16,11 @@ public interface TicketService {
 
     Ticket createTicket(TicketDto ticketDto, String token) throws TicketProcessingException, ConstraintViolationException;
 
-    Ticket updateTicket(HashMap<String, Object> values) throws TicketProcessingException, ConstraintViolationException;
+    Ticket updateTicket(HashMap<String, Object> values, String token) throws TicketProcessingException, ConstraintViolationException;
 
     void deleteTicketById(long id) throws TicketProcessingException;
+
+    HashMap<String, Object> getTicketField(long id, String fieldName, String token) throws TicketProcessingException;
 
     void payForTicketList(HashMap<String, Object> values, String token) throws TicketProcessingException;
 }
