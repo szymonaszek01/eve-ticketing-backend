@@ -18,10 +18,13 @@ public class FirebaseController {
 
     @PostMapping("/upload")
     public ResponseEntity<?> upload(@RequestParam(value = "file") MultipartFile file,
-                                    @RequestParam(value = "entity") String entity,
-                                    @RequestParam(value = "field") String field,
+                                    @RequestParam(value = "entity", defaultValue = "") String entity,
+                                    @RequestParam(value = "id") Long id,
+                                    @RequestParam(value = "field", defaultValue = "") String field,
+                                    @RequestParam(value = "content-type", defaultValue = "media") String contentType,
+                                    @RequestParam(value = "update", defaultValue = "false") boolean update,
                                     @RequestHeader("Authorization") String token) {
-        FirebaseDto firebaseDto = firebaseService.upload(file, entity, field, token);
+        FirebaseDto firebaseDto = firebaseService.upload(file, entity, id, field, contentType, update, token);
         return new ResponseEntity<>(firebaseDto, HttpStatus.OK);
     }
 }
