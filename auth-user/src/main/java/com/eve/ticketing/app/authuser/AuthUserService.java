@@ -18,7 +18,7 @@ public interface AuthUserService {
 
     void deleteAuthUserById(long id) throws AuthUserProcessingException;
 
-    HashMap<String, Object> getAuthUserField(String fieldName) throws AuthUserProcessingException;
+    HashMap<String, Object> getAuthUserField(long id, String fieldName) throws AuthUserProcessingException;
 
     AuthUser getAuthUserByEmail(String email) throws AuthUserProcessingException;
 

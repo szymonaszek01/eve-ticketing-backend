@@ -46,9 +46,9 @@ public class AuthUserController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
-    @GetMapping("/field/{field}")
-    public ResponseEntity<?> getAuthUserField(@PathVariable String field) {
-        HashMap<String, Object> authUserField = authUserService.getAuthUserField(field);
+    @GetMapping("/id/{id}/field/{field}")
+    public ResponseEntity<?> getAuthUserField(@PathVariable long id, @PathVariable String field) {
+        HashMap<String, Object> authUserField = authUserService.getAuthUserField(id, field);
         return new ResponseEntity<>(authUserField, HttpStatus.OK);
     }
 

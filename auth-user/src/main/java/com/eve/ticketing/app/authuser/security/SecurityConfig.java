@@ -51,7 +51,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/auth-user/update").hasAnyAuthority(ADMIN, USER)
                 .requestMatchers("/api/v1/auth-user/all").hasAuthority(ADMIN)
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/auth-user/id/{id}").hasAuthority(ADMIN)
-                .requestMatchers(HttpMethod.GET, "/api/v1/auth-user/field/{field}").hasAnyAuthority(ADMIN, USER)
+                .requestMatchers(HttpMethod.GET, "/api/v1/auth-user/id/{id}/field/{field}").hasAnyAuthority(ADMIN, USER)
                 .and()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()

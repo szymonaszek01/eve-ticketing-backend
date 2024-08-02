@@ -196,12 +196,7 @@ public class AuthUserServiceImpl implements AuthUserService {
     }
 
     @Override
-    public HashMap<String, Object> getAuthUserField(String fieldName) throws AuthUserProcessingException {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Long id = 0L;
-        if (authentication != null && authentication.getPrincipal() instanceof UserDetails userDetails) {
-            id = userDetails.getId();
-        }
+    public HashMap<String, Object> getAuthUserField(long id, String fieldName) throws AuthUserProcessingException {
         AuthUser authUser = getAuthUserById(id);
         Error error = Error.builder().method("GET").field(fieldName).build();
         String convertedKey = toCamelCase(fieldName);
