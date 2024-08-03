@@ -276,6 +276,39 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
+    public HashMap<String, Object> getTicketField(long id, String fieldName, String token) throws TicketProcessingException {
+        UserDto userDto = validateToken(token);
+        Ticket ticket = getTicketById(id);
+        Error error = Error.builder().method("GET").field(fieldName).build();
+        if (!Objects.equals(ticket.getUserId(), userDto.getId())) {
+            error.setDescription("you do not have access to this field");
+            log.error(error.toString());
+            throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
+        }
+        String convertedKey = toCamelCase(fieldName);
+        try {
+            Field field = ticket.getClass().getDeclaredField(convertedKey);
+            field.setAccessible(true);
+            HashMap<String, Object> response = new HashMap<>(3);
+            response.put("id", id);
+            response.put("key", fieldName);
+            response.put("value", field.get(ticket));
+            return response;
+        } catch (NullPointerException e) {
+            error.setDescription("field can not be null");
+            log.error(error.toString());
+        } catch (NoSuchFieldException e) {
+            error.setDescription("field does not exists");
+            log.error(error.toString());
+        } catch (IllegalAccessException e) {
+            error.setDescription("illegal access to field");
+            log.error(error.toString());
+        }
+        log.error(error.toString());
+        throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
+    }
+
+    @Override
     @Transactional(isolation = Isolation.REPEATABLE_READ)
     public void payForTicketList(HashMap<String, Object> values, String token) throws TicketProcessingException {
         List<Number> ids = new ArrayList<>();
@@ -308,6 +341,9 @@ public class TicketServiceImpl implements TicketService {
             error.setDescription("some tickets with provided ids are expired");
         }
         filteredTicketList.forEach(ticket -> ticket.setPaid(true));
+        for (Ticket ticket : filteredTicketList) {
+            createPdf(ticket, getEvent(ticket.getEventId()), getSeat(ticket.getSeatId(), token), validateToken(token), token);
+        }
         ticketRepository.flush();
     }
 
@@ -358,39 +394,6 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
-    @Override
-    public HashMap<String, Object> getTicketField(long id, String fieldName, String token) throws TicketProcessingException {
-        UserDto userDto = validateToken(token);
-        Ticket ticket = getTicketById(id);
-        Error error = Error.builder().method("GET").field(fieldName).build();
-        if (!Objects.equals(ticket.getUserId(), userDto.getId())) {
-            error.setDescription("you do not have access to this field");
-            log.error(error.toString());
-            throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
-        }
-        String convertedKey = toCamelCase(fieldName);
-        try {
-            Field field = ticket.getClass().getDeclaredField(convertedKey);
-            field.setAccessible(true);
-            HashMap<String, Object> response = new HashMap<>(3);
-            response.put("id", id);
-            response.put("key", fieldName);
-            response.put("value", field.get(ticket));
-            return response;
-        } catch (NullPointerException e) {
-            error.setDescription("field can not be null");
-            log.error(error.toString());
-        } catch (NoSuchFieldException e) {
-            error.setDescription("field does not exists");
-            log.error(error.toString());
-        } catch (IllegalAccessException e) {
-            error.setDescription("illegal access to field");
-            log.error(error.toString());
-        }
-        log.error(error.toString());
-        throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
-    }
-
     private EventDto getEvent(long eventId) throws TicketProcessingException {
         EventDto eventDto;
         Error error = Error.builder().method("").field("event_id").value(eventId).build();
@@ -423,6 +426,27 @@ public class TicketServiceImpl implements TicketService {
         }
 
         return eventDto;
+    }
+
+    private SeatDto getSeat(Long seatId, String token) throws TicketProcessingException {
+        if (seatId == null) {
+            return null;
+        }
+        Error error = Error.builder().method("").field("seat_id").value(seatId).build();
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", token);
+            return restTemplate.exchange(
+                    "http://SEAT/api/v1/seat/id/" + seatId,
+                    HttpMethod.GET,
+                    new HttpEntity<>(null, headers),
+                    SeatDto.class
+            ).getBody();
+        } catch (RestClientException e) {
+            error.setDescription("unable to communicate with seat server");
+            log.error(error.toString());
+            throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
+        }
     }
 
     private File convertToFile(byte[] bytes, String fileName) throws IOException {
