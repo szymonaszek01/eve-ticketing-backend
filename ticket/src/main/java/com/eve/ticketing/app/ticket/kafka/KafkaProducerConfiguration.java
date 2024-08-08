@@ -1,5 +1,6 @@
 package com.eve.ticketing.app.ticket.kafka;
 
+import com.eve.ticketing.app.ticket.dto.EmailDto;
 import com.eve.ticketing.app.ticket.dto.NotificationDto;
 import lombok.AllArgsConstructor;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -20,7 +21,7 @@ public class KafkaProducerConfiguration {
     private final KafkaConfiguration kafkaConfiguration;
 
     @Bean
-    public Map<String, Object> producerConfiguration() {
+    public Map<String, Object> notificationProducerConfiguration() {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaConfiguration.getBootstrapServers());
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -29,12 +30,31 @@ public class KafkaProducerConfiguration {
     }
 
     @Bean
-    public ProducerFactory<String, NotificationDto> producerFactory() {
-        return new DefaultKafkaProducerFactory<>(producerConfiguration());
+    public Map<String, Object> emailProducerConfiguration() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaConfiguration.getBootstrapServers());
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaEmailSerializer.class);
+        return props;
     }
 
     @Bean
-    public KafkaTemplate<String, NotificationDto> kafkaTemplate(ProducerFactory<String, NotificationDto> producerFactory) {
-        return new KafkaTemplate<>(producerFactory);
+    public ProducerFactory<String, NotificationDto> notifiactionProducerFactory() {
+        return new DefaultKafkaProducerFactory<>(notificationProducerConfiguration());
+    }
+
+    @Bean
+    public ProducerFactory<String, EmailDto> emailProducerFactory() {
+        return new DefaultKafkaProducerFactory<>(emailProducerConfiguration());
+    }
+
+    @Bean
+    public KafkaTemplate<String, NotificationDto> kafkaTemplateNotificationDto(ProducerFactory<String, NotificationDto> notifiactionProducerFactory) {
+        return new KafkaTemplate<>(notifiactionProducerFactory);
+    }
+
+    @Bean
+    public KafkaTemplate<String, EmailDto> kafkaTemplateEmailDto(ProducerFactory<String, EmailDto> emailProducerFactory) {
+        return new KafkaTemplate<>(emailProducerFactory);
     }
 }

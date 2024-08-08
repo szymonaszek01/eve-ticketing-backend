@@ -1,6 +1,6 @@
 package com.eve.ticketing.app.ticket.kafka;
 
-import com.eve.ticketing.app.ticket.dto.NotificationDto;
+import com.eve.ticketing.app.ticket.dto.EmailDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.errors.SerializationException;
@@ -9,7 +9,7 @@ import org.apache.kafka.common.serialization.Serializer;
 import java.util.Map;
 
 @Slf4j
-public class KafkaNotificationSerializer implements Serializer<NotificationDto> {
+public class KafkaEmailSerializer implements Serializer<EmailDto> {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -19,15 +19,15 @@ public class KafkaNotificationSerializer implements Serializer<NotificationDto> 
     }
 
     @Override
-    public byte[] serialize(String s, NotificationDto notificationDto) {
+    public byte[] serialize(String s, EmailDto emailDto) {
         try {
-            if (notificationDto == null) {
+            if (emailDto == null) {
                 log.error("Null received at serializing");
                 return null;
             }
-            return objectMapper.writeValueAsBytes(notificationDto);
+            return objectMapper.writeValueAsBytes(emailDto);
         } catch (Exception e) {
-            throw new SerializationException("Error when serializing notificationDto to byte[]");
+            throw new SerializationException("Error when serializing emailDto to byte[]");
         }
     }
 

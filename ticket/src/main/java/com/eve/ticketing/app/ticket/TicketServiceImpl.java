@@ -3,6 +3,7 @@ package com.eve.ticketing.app.ticket;
 import com.eve.ticketing.app.ticket.dto.*;
 import com.eve.ticketing.app.ticket.exception.Error;
 import com.eve.ticketing.app.ticket.exception.TicketProcessingException;
+import com.eve.ticketing.app.ticket.kafka.KafkaEmailProducer;
 import com.eve.ticketing.app.ticket.kafka.KafkaNotificationProducer;
 import com.google.i18n.phonenumbers.NumberParseException;
 import com.google.i18n.phonenumbers.PhoneNumberUtil;
@@ -45,6 +46,8 @@ public class TicketServiceImpl implements TicketService {
     private final RestTemplate restTemplate;
 
     private final KafkaNotificationProducer kafkaNotificationProducer;
+
+    private final KafkaEmailProducer kafkaEmailProducer;
 
     @Override
     public Page<Ticket> getTicketList(int page, int size, TicketFilterDto ticketFilterDto, String[] sortArray, String token) {
@@ -150,6 +153,7 @@ public class TicketServiceImpl implements TicketService {
             String message = "Hi " + ticket.getFirstname() + ".\nYou have reserved on the " + ticket.getCreatedAt() +
                     " a ticket with code \"" + ticket.getCode() + "\" for " + eventDto.getName() + ".\nSee yoo soon,\nEve ticketing system";
             publishNotification(ticket, message);
+            publishEmail(ticket, eventDto, seatDto, userDto);
 
             log.info("Ticket (code=\"{}\", eventId={}) was created", ticket.getCode(), ticket.getEventId());
             return ticket;
@@ -233,14 +237,16 @@ public class TicketServiceImpl implements TicketService {
             }
             ticket.setCost(getTicketCost(eventDto, ticket.getIsAdult(), ticket.getIsStudent()));
         }
-        if (!updatedFields.isEmpty()) {
-            String message = "Hi " + ticket.getFirstname() + ".\nYou have updated a ticket with code \"" + ticket.getCode()
-                    + "\" for " + eventDto.getName() + ". Please, see the details on our page. \nSee yoo soon,\nEve ticketing system";
-            publishNotification(ticket, message);
+        if (updatedFields.isEmpty()) {
+            return ticket;
         }
 
         UserDto userDto = validateToken(token);
         createPdf(ticket, eventDto, seatDto, userDto, token);
+        String message = "Hi " + ticket.getFirstname() + ".\nYou have updated a ticket with code \"" + ticket.getCode()
+                + "\" for " + eventDto.getName() + ". Please, see the details on our page. \nSee yoo soon,\nEve ticketing system";
+        publishNotification(ticket, message);
+        publishEmail(ticket, eventDto, seatDto, userDto);
         ticketRepository.flush();
 
         return ticket;
@@ -331,18 +337,14 @@ public class TicketServiceImpl implements TicketService {
             error.setValue(ids);
             error.setDescription("not all tickets with provided ids found");
         }
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeZone(TimeZone.getTimeZone("UTC"));
-        calendar.add(Calendar.MINUTE, -10);
-        List<Ticket> filteredTicketList = ticketList.stream().filter(ticket -> ticket.getCreatedAt().after(calendar.getTime())).toList();
-        if (filteredTicketList.size() != ids.size()) {
-            error.setField("ids");
-            error.setValue(ids);
-            error.setDescription("some tickets with provided ids are expired");
-        }
-        filteredTicketList.forEach(ticket -> ticket.setPaid(true));
-        for (Ticket ticket : filteredTicketList) {
-            createPdf(ticket, getEvent(ticket.getEventId()), getSeat(ticket.getSeatId(), token), validateToken(token), token);
+        isAnyTicketExpired(ticketList);
+        ticketList.forEach(ticket -> ticket.setPaid(true));
+        UserDto userDto = validateToken(token);
+        for (Ticket ticket : ticketList) {
+            EventDto eventDto = getEvent(ticket.getEventId());
+            SeatDto seatDto = getSeat(ticket.getSeatId(), token);
+            createPdf(ticket, eventDto, seatDto, userDto, token);
+            publishEmail(ticket, eventDto, seatDto, userDto);
         }
         ticketRepository.flush();
     }
@@ -373,6 +375,18 @@ public class TicketServiceImpl implements TicketService {
                 .firstname(ticket.getFirstname())
                 .message(message)
                 .ticketId(ticket.getId())
+                .build());
+    }
+
+    private void publishEmail(Ticket ticket, EventDto eventDto, SeatDto seatDto, UserDto userDto) {
+        kafkaEmailProducer.publish(EmailDto.builder()
+                .to(userDto.getEmail())
+                .subject(ticket.getPdfName())
+                .template("ticketemail")
+                .data(getData(ticket, eventDto, seatDto, userDto))
+                .attachment(ticket.getPdfAsByteArray())
+                .attachmentName(ticket.getPdfName())
+                .attachmentType(MediaType.APPLICATION_PDF_VALUE)
                 .build());
     }
 
@@ -461,24 +475,7 @@ public class TicketServiceImpl implements TicketService {
         Error error = Error.builder().field("pdf").build();
         byte[] bytes;
         try {
-            HashMap<String, Object> data = new HashMap<>();
-            data.put("email", userDto.getEmail());
-            data.put("userFirstname", userDto.getFirstname());
-            data.put("userLastname", userDto.getLastname());
-            data.put("userPhoneNumber", userDto.getPhoneNumber());
-            data.put("event", eventDto.getName());
-            data.put("code", ticket.getCode());
-            data.put("firstname", ticket.getFirstname());
-            data.put("lastname", ticket.getLastname());
-            data.put("phoneNumber", ticket.getPhoneNumber());
-            data.put("adult", ticket.getIsAdult());
-            data.put("student", ticket.getIsStudent());
-            data.put("paid", ticket.getPaid());
-            if (seatDto != null) {
-                data.put("sector", seatDto.getSector());
-                data.put("row", seatDto.getRow());
-                data.put("number", seatDto.getNumber());
-            }
+            HashMap<String, Object> data = getData(ticket, eventDto, seatDto, userDto);
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", token);
             bytes = restTemplate.exchange(
@@ -500,6 +497,8 @@ public class TicketServiceImpl implements TicketService {
         try {
             MultipartBodyBuilder builder = new MultipartBodyBuilder();
             String filename = "ticket-" + ticket.getCode() + ".pdf";
+            ticket.setPdfName(filename);
+            ticket.setPdfAsByteArray(bytes);
             File file = convertToFile(bytes, filename);
             builder.part("file", new FileSystemResource(file));
             HttpHeaders headers = new HttpHeaders();
@@ -568,6 +567,28 @@ public class TicketServiceImpl implements TicketService {
         return camelCaseString.toString();
     }
 
+    private HashMap<String, Object> getData(Ticket ticket, EventDto eventDto, SeatDto seatDto, UserDto userDto) {
+        HashMap<String, Object> data = new HashMap<>();
+        data.put("email", userDto.getEmail());
+        data.put("userFirstname", userDto.getFirstname());
+        data.put("userLastname", userDto.getLastname());
+        data.put("userPhoneNumber", userDto.getPhoneNumber());
+        data.put("event", eventDto.getName());
+        data.put("code", ticket.getCode());
+        data.put("firstname", ticket.getFirstname());
+        data.put("lastname", ticket.getLastname());
+        data.put("phoneNumber", ticket.getPhoneNumber());
+        data.put("adult", ticket.getIsAdult());
+        data.put("student", ticket.getIsStudent());
+        data.put("paid", ticket.getPaid());
+        if (seatDto != null) {
+            data.put("sector", seatDto.getSector());
+            data.put("row", seatDto.getRow());
+            data.put("number", seatDto.getNumber());
+        }
+        return data;
+    }
+
     private boolean isPhoneNumberValid(String phoneNumberAsString) {
         try {
             PhoneNumberUtil phoneNumberUtil = PhoneNumberUtil.getInstance();
@@ -575,6 +596,22 @@ public class TicketServiceImpl implements TicketService {
             return phoneNumberUtil.isValidNumber(phoneNumber);
         } catch (NumberParseException e) {
             return false;
+        }
+    }
+
+    private void isAnyTicketExpired(List<Ticket> ticketList) throws TicketProcessingException {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeZone(TimeZone.getTimeZone("UTC"));
+        calendar.add(Calendar.MINUTE, -10);
+        List<Ticket> filteredTicketList = ticketList.stream().filter(ticket -> ticket.getCreatedAt().after(calendar.getTime())).toList();
+        if (filteredTicketList.size() != ticketList.size()) {
+            Error error = Error.builder()
+                    .field("ids")
+                    .value(ticketList.stream().map(Ticket::getId).toList())
+                    .description("some tickets with provided ids are expired")
+                    .build();
+            log.error(error.toString());
+            throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
         }
     }
 }

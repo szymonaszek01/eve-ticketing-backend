@@ -14,7 +14,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TicketScheduler {
 
-    private static final int PAYMENT_DURATION = 15;
+    private static final int PAYMENT_DURATION = 10;
 
     private final TicketServiceImpl ticketService;
 
