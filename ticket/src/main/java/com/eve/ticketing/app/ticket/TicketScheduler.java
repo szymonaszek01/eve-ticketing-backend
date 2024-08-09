@@ -22,9 +22,9 @@ public class TicketScheduler {
     public void removeUnpaidTickets() {
         Calendar calendar = Calendar.getInstance();
         calendar.add(Calendar.MINUTE, -PAYMENT_DURATION);
-        Date createdAt = calendar.getTime();
-        List<Ticket> ticketList = ticketService.getTicketListByPaidIsFalseAndCreatedAt(createdAt);
-        ticketList.forEach(ticket -> ticketService.deleteTicketById(ticket.getId()));
+        Date maxDate = calendar.getTime();
+        List<Ticket> ticketList = ticketService.getTicketListByPaidIsFalseAndCreatedAtBefore(maxDate);
+        ticketList.forEach(ticketService::deleteTicket);
         log.info("Result of ticket scheduler - removed unpaid tickets ({})", ticketList.size());
     }
 }

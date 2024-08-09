@@ -41,12 +41,11 @@ import static com.eve.ticketing.app.ticket.TicketSpecification.*;
 @AllArgsConstructor
 public class TicketServiceImpl implements TicketService {
 
+    private static final String TICKET_EMAIL_TEMPLATE_NAME = "ticketemail";
+    private static final String TICKET_CANCELED_EMAIL_TEMPLATE_NAME = "ticketcanceled";
     private final TicketRepository ticketRepository;
-
     private final RestTemplate restTemplate;
-
     private final KafkaNotificationProducer kafkaNotificationProducer;
-
     private final KafkaEmailProducer kafkaEmailProducer;
 
     @Override
@@ -153,7 +152,7 @@ public class TicketServiceImpl implements TicketService {
             String message = "Hi " + ticket.getFirstname() + ".\nYou have reserved on the " + ticket.getCreatedAt() +
                     " a ticket with code \"" + ticket.getCode() + "\" for " + eventDto.getName() + ".\nSee yoo soon,\nEve ticketing system";
             publishNotification(ticket, message);
-            publishEmail(ticket, eventDto, seatDto, userDto);
+            publishEmail(ticket, eventDto, seatDto, userDto, TICKET_EMAIL_TEMPLATE_NAME);
 
             log.info("Ticket (code=\"{}\", eventId={}) was created", ticket.getCode(), ticket.getEventId());
             return ticket;
@@ -246,7 +245,7 @@ public class TicketServiceImpl implements TicketService {
         String message = "Hi " + ticket.getFirstname() + ".\nYou have updated a ticket with code \"" + ticket.getCode()
                 + "\" for " + eventDto.getName() + ". Please, see the details on our page. \nSee yoo soon,\nEve ticketing system";
         publishNotification(ticket, message);
-        publishEmail(ticket, eventDto, seatDto, userDto);
+        publishEmail(ticket, eventDto, seatDto, userDto, TICKET_EMAIL_TEMPLATE_NAME);
         ticketRepository.flush();
 
         return ticket;
@@ -254,28 +253,36 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public void deleteTicketById(long id) throws TicketProcessingException {
+    public void deleteTicketById(long id, String token) throws TicketProcessingException {
         try {
             Ticket ticket = getTicketById(id);
             EventDto eventDto = getEvent(ticket.getEventId());
-
-            if (!eventDto.isWithoutSeats()) {
-                HashMap<String, Object> seatValues = new HashMap<>(4);
-                seatValues.put("id", ticket.getSeatId());
-                seatValues.put("event_id", ticket.getEventId());
-                seatValues.put("is_sold_out", eventDto.isSoldOut());
-                seatValues.put("occupied", false);
-                updateSeat(seatValues);
-            }
-
+            SeatDto seatDto = cancelSeat(ticket, eventDto);
+            UserDto userDto = validateToken(token);
             ticketRepository.deleteById(id);
             String message = "Hi " + ticket.getFirstname() + ".\nYour ticket with code \"" + ticket.getCode()
                     + "\" for " + eventDto.getName() + " was canceled. Please, see the details on our page. \nSee yoo soon,\nEve ticketing system";
             publishNotification(ticket, message);
-
+            String filename = "ticket-" + ticket.getCode() + ".pdf";
+            ticket.setPdfName(filename);
+            publishEmail(ticket, eventDto, seatDto, userDto, TICKET_CANCELED_EMAIL_TEMPLATE_NAME);
             log.info("Ticket (id=\"{}\") was deleted", id);
         } catch (RuntimeException e) {
             Error error = Error.builder().method("DELETE").field("id").value(id).description("id not found").build();
+            log.error(error.toString());
+            throw new TicketProcessingException(HttpStatus.NOT_FOUND, error);
+        }
+    }
+
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public void deleteTicket(Ticket ticket) throws TicketProcessingException {
+        try {
+            EventDto eventDto = getEvent(ticket.getEventId());
+            cancelSeat(ticket, eventDto);
+            ticketRepository.delete(ticket);
+            log.info("Ticket (id=\"{}\") was deleted by scheduler", ticket.getId());
+        } catch (RuntimeException e) {
+            Error error = Error.builder().method("DELETE").field("ticket").value(ticket).description("id not found").build();
             log.error(error.toString());
             throw new TicketProcessingException(HttpStatus.NOT_FOUND, error);
         }
@@ -344,13 +351,13 @@ public class TicketServiceImpl implements TicketService {
             EventDto eventDto = getEvent(ticket.getEventId());
             SeatDto seatDto = getSeat(ticket.getSeatId(), token);
             createPdf(ticket, eventDto, seatDto, userDto, token);
-            publishEmail(ticket, eventDto, seatDto, userDto);
+            publishEmail(ticket, eventDto, seatDto, userDto, TICKET_EMAIL_TEMPLATE_NAME);
         }
         ticketRepository.flush();
     }
 
-    public List<Ticket> getTicketListByPaidIsFalseAndCreatedAt(Date createdAt) {
-        return ticketRepository.findAllByPaidIsFalseAndCreatedAt(createdAt);
+    public List<Ticket> getTicketListByPaidIsFalseAndCreatedAtBefore(Date maxDate) {
+        return ticketRepository.findAllByPaidIsFalseAndCreatedAtBefore(maxDate);
     }
 
     private BigDecimal getTicketCost(EventDto eventDto, boolean isAdult, boolean isStudent) throws TicketProcessingException {
@@ -378,11 +385,11 @@ public class TicketServiceImpl implements TicketService {
                 .build());
     }
 
-    private void publishEmail(Ticket ticket, EventDto eventDto, SeatDto seatDto, UserDto userDto) {
+    private void publishEmail(Ticket ticket, EventDto eventDto, SeatDto seatDto, UserDto userDto, String template) {
         kafkaEmailProducer.publish(EmailDto.builder()
                 .to(userDto.getEmail())
                 .subject(ticket.getPdfName())
-                .template("ticketemail")
+                .template(template)
                 .data(getData(ticket, eventDto, seatDto, userDto))
                 .attachment(ticket.getPdfAsByteArray())
                 .attachmentName(ticket.getPdfName())
@@ -461,14 +468,6 @@ public class TicketServiceImpl implements TicketService {
             log.error(error.toString());
             throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
         }
-    }
-
-    private File convertToFile(byte[] bytes, String fileName) throws IOException {
-        File tempFile = new File(fileName);
-        try (FileOutputStream fos = new FileOutputStream(tempFile)) {
-            fos.write(bytes);
-        }
-        return tempFile;
     }
 
     private void createPdf(Ticket ticket, EventDto eventDto, SeatDto seatDto, UserDto userDto, String token) throws TicketProcessingException {
@@ -551,6 +550,27 @@ public class TicketServiceImpl implements TicketService {
             log.error(error.toString());
             throw new TicketProcessingException(HttpStatus.BAD_REQUEST, error);
         }
+    }
+
+    private File convertToFile(byte[] bytes, String fileName) throws IOException {
+        File tempFile = new File(fileName);
+        try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+            fos.write(bytes);
+        }
+        return tempFile;
+    }
+
+    private SeatDto cancelSeat(Ticket ticket, EventDto eventDto) throws TicketProcessingException {
+        SeatDto seatDto = null;
+        if (!eventDto.isWithoutSeats()) {
+            HashMap<String, Object> seatValues = new HashMap<>(4);
+            seatValues.put("id", ticket.getSeatId());
+            seatValues.put("event_id", ticket.getEventId());
+            seatValues.put("is_sold_out", eventDto.isSoldOut());
+            seatValues.put("occupied", false);
+            seatDto = updateSeat(seatValues);
+        }
+        return seatDto;
     }
 
     private String toCamelCase(String value) {

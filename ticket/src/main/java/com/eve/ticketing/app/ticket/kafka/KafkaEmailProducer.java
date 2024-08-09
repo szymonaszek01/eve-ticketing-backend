@@ -20,9 +20,9 @@ public class KafkaEmailProducer {
     public void publish(EmailDto emailDto) {
         try {
             kafkaTemplate.send("email", emailDto);
-            log.info("Email for ticket (ticketId={}) was published successfully", emailDto.getData().getOrDefault("id", "-"));
+            log.info("Email for ticket (ticket={}) was published successfully", emailDto.getData().getOrDefault("code", "-"));
         } catch (RuntimeException e) {
-            log.error("Email for ticket (ticketId={}) was not published - {}", emailDto.getData().getOrDefault("id", "-"), e.getMessage());
+            log.error("Email for ticket (ticket={}) was not published - {}", emailDto.getData().getOrDefault("code", "-"), e.getMessage());
         }
 
     }

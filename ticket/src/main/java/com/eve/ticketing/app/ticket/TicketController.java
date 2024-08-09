@@ -49,8 +49,8 @@ public class TicketController {
     }
 
     @DeleteMapping("/id/{id}")
-    public ResponseEntity<?> deleteTicketById(@PathVariable long id) {
-        ticketService.deleteTicketById(id);
+    public ResponseEntity<?> deleteTicketById(@PathVariable long id, @RequestHeader("Authorization") String token) {
+        ticketService.deleteTicketById(id, token);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 

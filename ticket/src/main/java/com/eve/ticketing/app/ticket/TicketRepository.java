@@ -10,5 +10,5 @@ import java.util.List;
 @Repository
 public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecificationExecutor<Ticket> {
 
-    List<Ticket> findAllByPaidIsFalseAndCreatedAt(Date createdAt);
+    List<Ticket> findAllByPaidIsFalseAndCreatedAtBefore(Date maxDate);
 }
