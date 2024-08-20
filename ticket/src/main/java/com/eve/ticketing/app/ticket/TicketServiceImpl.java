@@ -59,6 +59,9 @@ public class TicketServiceImpl implements TicketService {
         } catch (TicketProcessingException e) {
             return Page.empty();
         }
+        if (page == 0 || size == 0) {
+            return Page.empty();
+        }
 
         Date minDate = TicketUtil.getDateFromString(ticketFilterDto.getMinDate());
         Date maxDate = TicketUtil.getDateFromString(ticketFilterDto.getMaxDate());

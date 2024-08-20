@@ -36,6 +36,9 @@ public class SeatServiceImpl implements SeatService {
 
     @Override
     public Page<Seat> getSeatList(int page, int size, SeatFilterDto seatFilterDto) {
+        if (page == 0 || size == 0) {
+            return Page.empty();
+        }
         Specification<Seat> seatSpecification = Specification.where(seatSectorEqual(seatFilterDto.getSector()))
                 .and(seatRowEqual(seatFilterDto.getRow()))
                 .and(seatNumberEqual(seatFilterDto.getNumber()));

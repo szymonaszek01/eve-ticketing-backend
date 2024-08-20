@@ -67,6 +67,9 @@ public class AuthUserServiceImpl implements AuthUserService {
 
     @Override
     public Page<AuthUser> getAuthUserList(int page, int size, AuthUserFilterDto authUserFilterDto, String[] sortArray) {
+        if (page == 0 || size == 0) {
+            return Page.empty();
+        }
         Date minDate = getDateFromString(authUserFilterDto.getMinDate());
         Date maxDate = getDateFromString(authUserFilterDto.getMaxDate());
         Specification<AuthUser> authUserSpecification = Specification.where(AuthUserEmailEqual(authUserFilterDto.getEmail()))

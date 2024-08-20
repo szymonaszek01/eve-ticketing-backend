@@ -43,6 +43,9 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public Page<Event> getEventList(int page, int size, EventFilterDto eventFilterDto, String[] sortArray) {
+        if (page == 0 || size == 0) {
+            return Page.empty();
+        }
         Date minDate = EventUtil.getDateFromString(eventFilterDto.getMinDate());
         Date maxDate = EventUtil.getDateFromString(eventFilterDto.getMaxDate());
         Specification<Event> eventSpecification = Specification.where(eventNameEqual(eventFilterDto.getName()))
