@@ -43,7 +43,7 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public Page<Event> getEventList(int page, int size, EventFilterDto eventFilterDto, String[] sortArray) {
-        if (page == 0 || size == 0) {
+        if (page < 0 || size <= 0) {
             return Page.empty();
         }
         Date minDate = EventUtil.getDateFromString(eventFilterDto.getMinDate());

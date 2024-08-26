@@ -59,7 +59,7 @@ public class TicketServiceImpl implements TicketService {
         } catch (TicketProcessingException e) {
             return Page.empty();
         }
-        if (page == 0 || size == 0) {
+        if (page < 0 || size <= 0) {
             return Page.empty();
         }
 
