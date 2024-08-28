@@ -57,8 +57,9 @@ public class FirebaseServiceImpl implements FirebaseService {
             }
             String link = getLink(filename);
             if (update) {
-                HashMap<String, Object> values = new HashMap<>(1);
+                HashMap<String, Object> values = new HashMap<>(2);
                 values.put(field, link);
+                values.put("id", id);
                 updateEntity(values, entity, token, storage, blobId);
             }
             return FirebaseDto.builder().filename(filename).link(link).build();
@@ -128,7 +129,7 @@ public class FirebaseServiceImpl implements FirebaseService {
             ).getBody();
             log.info("image updated successfully in {} (id={})", entity, getIdFromObject(response, error, storage, blobId));
         } catch (Exception e) {
-            error.setDescription("unable to communicate with auth user server");
+            error.setDescription("unable to communicate with " + entity.toLowerCase() + " server");
             storage.delete(blobId);
             log.error(error.toString());
             throw new FirebaseProcessingException(HttpStatus.BAD_REQUEST, error);
