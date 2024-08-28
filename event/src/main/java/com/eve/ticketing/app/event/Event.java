@@ -81,6 +81,8 @@ public class Event {
     @NotNull(message = "should not be null")
     private Boolean isWithoutSeats;
 
+    private String image;
+
     @JsonProperty("admin_id")
     @NotNull(message = "should not be null")
     @Min(value = 1, message = "should be greater than 0")

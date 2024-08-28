@@ -51,4 +51,10 @@ public class EventController {
         eventService.deleteEventById(id);
         return new ResponseEntity<>(HttpStatus.OK);
     }
+
+    @GetMapping("/id/{id}/field/{field}")
+    public ResponseEntity<?> getEventField(@PathVariable long id, @PathVariable String field) {
+        HashMap<String, Object> eventField = eventService.getEventField(id, field);
+        return new ResponseEntity<>(eventField, HttpStatus.OK);
+    }
 }

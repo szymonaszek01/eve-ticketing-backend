@@ -18,4 +18,6 @@ public interface EventService {
     Event updateEvent(HashMap<String, Object> values) throws EventProcessingException, ConstraintViolationException;
 
     void deleteEventById(long id) throws EventProcessingException;
+
+    HashMap<String, Object> getEventField(long id, String fieldName);
 }

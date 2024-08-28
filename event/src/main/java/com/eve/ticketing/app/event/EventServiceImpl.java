@@ -195,6 +195,33 @@ public class EventServiceImpl implements EventService {
         }
     }
 
+    @Override
+    public HashMap<String, Object> getEventField(long id, String fieldName) {
+        Event event = getEventById(id);
+        String convertedKey = toCamelCase(fieldName);
+        Error error = Error.builder().method("GET").field(fieldName).build();
+        try {
+            Field field = event.getClass().getDeclaredField(convertedKey);
+            field.setAccessible(true);
+            HashMap<String, Object> response = new HashMap<>(3);
+            response.put("id", id);
+            response.put("key", fieldName);
+            response.put("value", field.get(event));
+            return response;
+        } catch (NullPointerException e) {
+            error.setDescription("field can not be null");
+            log.error(error.toString());
+        } catch (NoSuchFieldException e) {
+            error.setDescription("field does not exists");
+            log.error(error.toString());
+        } catch (IllegalAccessException e) {
+            error.setDescription("illegal access to field");
+            log.error(error.toString());
+        }
+        log.error(error.toString());
+        throw new EventProcessingException(HttpStatus.BAD_REQUEST, error);
+    }
+
     private AdminDto getAdmin(long adminId, String token) throws EventProcessingException {
         try {
             HttpHeaders headers = new HttpHeaders();
